@@ -1,0 +1,15 @@
+[package]
+name = "sgp4"
+version = "0.1.0"
+authors = ["Alexandre Marcireau <alexandre.marcireau@gmail.com>"]
+edition = "2018"
+
+[dev-dependencies]
+chrono = {version = "0.4", features = ["serde"]}
+criterion = {version = "0.3"}
+serde = {version = "1.0", features = ["derive"]}
+toml = "0.5"
+
+[[bench]]
+name = "propagate"
+harness = false
