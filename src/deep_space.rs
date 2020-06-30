@@ -60,7 +60,7 @@ pub fn constants<'a>(
     t0: f64,
     drag_term: f64,
     orbit_0: propagator::Orbit,
-    p0: f64,
+    p1: f64,
     a0: f64,
     c1: f64,
     b0: f64,
@@ -68,7 +68,7 @@ pub fn constants<'a>(
     k0: f64,
     k1: f64,
     k14: f64,
-    p1: f64,
+    p2: f64,
     p13: f64,
     p14: f64,
 ) -> propagator::Constants<'a> {
@@ -79,18 +79,24 @@ pub fn constants<'a>(
         orbit_0.eccentricity,
         orbit_0.argument_of_perigee,
         orbit_0.mean_motion,
+        // sin Iₛ = 0.39785416
         0.39785416,
+        // cos Iₛ = 0.91744867
         0.91744867,
+        // sin(Ω₀ - Ωₛ) = sin Ω₀
         orbit_0.right_ascension.sin(),
+        // cos(Ω₀ - Ωₛ) = cos Ω₀
         orbit_0.right_ascension.cos(),
         SOLAR_ECCENTRICITY,
+        // sin ωₛ = -0.98088458
         -0.98088458,
+        // cos ωₛ = 0.1945905
         0.1945905,
         SOLAR_PERTURBATION_COEFFICIENT,
         SOLAR_MEAN_MOTION,
         // Mₛ₀ = (6.2565837 + 0.017201977 t₁₉₀₀) rem 2π
         (6.2565837 + 0.017201977 * t1900) % (2.0 * model::PI),
-        p1,
+        p2,
         b0,
     );
 
@@ -103,14 +109,13 @@ pub fn constants<'a>(
     // sin Iₗ = (1 - cos²Iₗ)¹ᐟ²
     let lunar_inclination_sine = (1.0 - lunar_inclination_cosine.powi(2)).sqrt();
 
-    // sin Ωₗ = 0.089683511 sin Ωₗₑ / sin Iₗ;
+    // sin Ωₗ = 0.089683511 sin Ωₗₑ / sin Iₗ
     let lunar_right_ascension_sine =
         0.089683511 * lunar_right_ascension_epsilon.sin() / lunar_inclination_sine;
 
     // cos Ωₗ = (1 - sin²Ωₗ)¹ᐟ²
     let lunar_right_ascension_cosine = (1.0 - lunar_right_ascension_sine.powi(2)).sqrt();
 
-    //
     // ωₗ = 5.8351514 + 0.001944368 t₁₉₀₀
     //                     0.39785416 sin Ωₗₑ / sin Iₗ
     //      + tan⁻¹ ------------------------------------------ - Ωₗₑ
@@ -142,7 +147,7 @@ pub fn constants<'a>(
         LUNAR_MEAN_MOTION,
         // Mₗ₀ = (-1.1151842 + 0.228027132 t₁₉₀₀) rem 2π
         (-1.1151842 + 0.228027132 * t1900) % (2.0 * model::PI),
-        p1,
+        p2,
         b0,
     );
     propagator::Constants {
@@ -193,32 +198,32 @@ pub fn constants<'a>(
                             // p₁₆ = 3 (n / a₀")²
                             let p16 = 3.0 * (orbit_0.mean_motion / a0).powi(2);
                             propagator::Resonance::OneDay {
-                                // 𝛿ᵣ₁ = p₁₆ (¹⁵/₁₆ sin²I₀ (1 + 3 p₀) - ³/₄ (1 + p₀))
+                                // 𝛿ᵣ₁ = p₁₆ (¹⁵/₁₆ sin²I₀ (1 + 3 p₁) - ³/₄ (1 + p₁))
                                 //           (1 + 2 e₀²) 2.1460748 × 10⁻⁶ / a₀"²
                                 dr1: p16
                                     * (0.9375
                                         * orbit_0.inclination.sin().powi(2)
-                                        * (1.0 + 3.0 * p0)
-                                        - 0.75 * (1.0 + p0))
+                                        * (1.0 + 3.0 * p1)
+                                        - 0.75 * (1.0 + p1))
                                     * (1.0 + 2.0 * orbit_0.eccentricity.powi(2))
                                     * 2.1460748e-6
                                     / a0,
 
-                                // 𝛿ᵣ₂ = 2 p₁₆ (³/₄ (1 + p₀)²)
+                                // 𝛿ᵣ₂ = 2 p₁₆ (³/₄ (1 + p₁)²)
                                 //      (1 + e₀² (- ⁵/₂ + ¹³/₁₆ e₀²)) 1.7891679 × 10⁻⁶
                                 dr2: 2.0
                                     * p16
-                                    * (0.75 * (1.0 + p0).powi(2))
+                                    * (0.75 * (1.0 + p1).powi(2))
                                     * (1.0
                                         + orbit_0.eccentricity.powi(2)
                                             * (-2.5 + 0.8125 * orbit_0.eccentricity.powi(2)))
                                     * 1.7891679e-6,
 
-                                // 𝛿ᵣ₃ = 3 p₁₆ (¹⁵/₈ (1 + p₀)³) (1 + e₀² (- 6 + 6.60937 e₀²))
+                                // 𝛿ᵣ₃ = 3 p₁₆ (¹⁵/₈ (1 + p₁)³) (1 + e₀² (- 6 + 6.60937 e₀²))
                                 //       2.2123015 × 10⁻⁷ / a₀"²
                                 dr3: 3.0
                                     * p16
-                                    * (1.875 * (1.0 + p0).powi(3))
+                                    * (1.875 * (1.0 + p1).powi(3))
                                     * (1.0
                                         + orbit_0.eccentricity.powi(2)
                                             * (-6.0 + 6.60937 * orbit_0.eccentricity.powi(2)))
@@ -258,8 +263,8 @@ pub fn constants<'a>(
                             // p₂₀ = p₁₉ / a₀"
                             let p20 = p19 * (1.0 / a0);
 
-                            // F₂₂₀ = ³/₄ (1 + 2 p₀ + p₀²)
-                            let f220 = 0.75 * (1.0 + 2.0 * p0 + p0.powi(2));
+                            // F₂₂₀ = ³/₄ (1 + 2 p₁ + p₁²)
+                            let f220 = 0.75 * (1.0 + 2.0 * p1 + p1.powi(2));
 
                             // G₂₁₁ = │ 3.616 - 13.247 e₀ + 16.29 e₀²                          if e₀ ≤ 0.65
                             //        │ - 72.099 + 331.819 e₀ - 508.738 e₀² + 266.724 e₀³      otherwise
@@ -369,20 +374,20 @@ pub fn constants<'a>(
                                     * (1.5 * orbit_0.inclination.sin().powi(2))
                                     * g211,
 
-                                // D₃₂₁₀ = p₁₈ 3.7393792 × 10⁻⁷ (¹⁵/₈ sin I₀ (1 - 2 p₀ - 3 p₀²)) G₃₁₀
+                                // D₃₂₁₀ = p₁₈ 3.7393792 × 10⁻⁷ (¹⁵/₈ sin I₀ (1 - 2 p₁ - 3 p₁²)) G₃₁₀
                                 d3210: p18
                                     * 3.7393792e-7
                                     * (1.875
                                         * orbit_0.inclination.sin()
-                                        * (1.0 - 2.0 * p0 - 3.0 * p0.powi(2)))
+                                        * (1.0 - 2.0 * p1 - 3.0 * p1.powi(2)))
                                     * g310,
 
-                                // D₃₂₂₂ = p₁₈ 3.7393792 × 10⁻⁷ (- ¹⁵/₈ sin I₀ (1 + 2 p₀ - 3 p₀²)) G₃₂₂
+                                // D₃₂₂₂ = p₁₈ 3.7393792 × 10⁻⁷ (- ¹⁵/₈ sin I₀ (1 + 2 p₁ - 3 p₁²)) G₃₂₂
                                 d3222: p18
                                     * 3.7393792e-7
                                     * (-1.875
                                         * orbit_0.inclination.sin()
-                                        * (1.0 + 2.0 * p0 - 3.0 * p0.powi(2)))
+                                        * (1.0 + 2.0 * p1 - 3.0 * p1.powi(2)))
                                     * g322,
 
                                 // D₄₄₁₀ = 2 p₁₉ 7.3636953 × 10⁻⁹ (35 sin²I₀ F₂₂₀) G₄₁₀
@@ -400,49 +405,49 @@ pub fn constants<'a>(
                                     * g422,
 
                                 // D₅₂₂₀ = p₂₀ 1.1428639 × 10⁻⁷ (³¹⁵/₃₂ sin I₀
-                                //         (sin²I₀ (1 - 2 p₀ - 5 p₀²)
-                                //         + 0.33333333 (- 2 + 4 p₀ + 6 p₀²))) G₅₂₀
+                                //         (sin²I₀ (1 - 2 p₁ - 5 p₁²)
+                                //         + 0.33333333 (- 2 + 4 p₁ + 6 p₁²))) G₅₂₀
                                 d5220: p20
                                     * 1.1428639e-7
                                     * (9.84375
                                         * orbit_0.inclination.sin()
                                         * (orbit_0.inclination.sin().powi(2)
-                                            * (1.0 - 2.0 * p0 - 5.0 * p0.powi(2))
-                                            + 0.33333333 * (-2.0 + 4.0 * p0 + 6.0 * p0.powi(2))))
+                                            * (1.0 - 2.0 * p1 - 5.0 * p1.powi(2))
+                                            + 0.33333333 * (-2.0 + 4.0 * p1 + 6.0 * p1.powi(2))))
                                     * g520,
 
                                 // D₅₂₃₂ = p₂₀ 1.1428639 × 10⁻⁷ (sin I₀
-                                //         (4.92187512 sin²I₀ (- 2 - 4 p₀ + 10 p₀²)
-                                //         + 6.56250012 (1 + p₀ - 3 p₀²))) G₅₃₂
+                                //         (4.92187512 sin²I₀ (- 2 - 4 p₁ + 10 p₁²)
+                                //         + 6.56250012 (1 + p₁ - 3 p₁²))) G₅₃₂
                                 d5232: p20
                                     * 1.1428639e-7
                                     * (orbit_0.inclination.sin()
                                         * (4.92187512
                                             * orbit_0.inclination.sin().powi(2)
-                                            * (-2.0 - 4.0 * p0 + 10.0 * p0.powi(2))
-                                            + 6.56250012 * (1.0 + 2.0 * p0 - 3.0 * p0.powi(2))))
+                                            * (-2.0 - 4.0 * p1 + 10.0 * p1.powi(2))
+                                            + 6.56250012 * (1.0 + 2.0 * p1 - 3.0 * p1.powi(2))))
                                     * g532,
 
                                 // D₅₄₂₁ = 2 p₂₀ 2.1765803 × 10⁻⁹ (⁹⁴⁵/₃₂ sin I₀
-                                //         (2 - 8 p₀ + p₀² (- 12 + 8 p₀ + 10 p₀²))) G₅₂₁
+                                //         (2 - 8 p₁ + p₁² (- 12 + 8 p₁ + 10 p₁²))) G₅₂₁
                                 d5421: 2.0
                                     * p20
                                     * 2.1765803e-9
                                     * (29.53125
                                         * orbit_0.inclination.sin()
-                                        * (2.0 - 8.0 * p0
-                                            + p0.powi(2) * (-12.0 + 8.0 * p0 + 10.0 * p0.powi(2))))
+                                        * (2.0 - 8.0 * p1
+                                            + p1.powi(2) * (-12.0 + 8.0 * p1 + 10.0 * p1.powi(2))))
                                     * g521,
 
                                 // D₅₄₃₃ = 2 p₂₀ 2.1765803 × 10⁻⁹ (⁹⁴⁵/₃₂ sin I₀
-                                //         (- 2 - 8 p₀ + p₀² (12 + 8 p₀ - 10 p₀²))) G₅₃₃
+                                //         (- 2 - 8 p₁ + p₁² (12 + 8 p₁ - 10 p₁²))) G₅₃₃
                                 d5433: 2.0
                                     * p20
                                     * 2.1765803e-9
                                     * (29.53125
                                         * orbit_0.inclination.sin()
-                                        * (-2.0 - 8.0 * p0
-                                            + p0.powi(2) * (12.0 + 8.0 * p0 - 10.0 * p0.powi(2))))
+                                        * (-2.0 - 8.0 * p1
+                                            + p1.powi(2) * (12.0 + 8.0 * p1 - 10.0 * p1.powi(2))))
                                     * g533,
                                 k14: k14,
                             }
@@ -650,13 +655,13 @@ impl<'a> propagator::Constants<'a> {
                 _ => panic!("state cannot be None with a deep space propagator"),
             },
         };
-        let (solar_delta_eccentricity, solar_delta_inclination, solar_delta_mean_motion, ls4, ls5) =
+        let (solar_delta_eccentricity, solar_delta_inclination, solar_delta_mean_motion, ps4, ps5) =
             solar_perturbations.long_period_periodic_effects(
                 SOLAR_ECCENTRICITY,
                 SOLAR_MEAN_MOTION,
                 t,
             );
-        let (lunar_delta_eccentricity, lunar_delta_inclination, lunar_delta_mean_motion, lp5, lp6) =
+        let (lunar_delta_eccentricity, lunar_delta_inclination, lunar_delta_mean_motion, pl4, pl5) =
             lunar_perturbations.long_period_periodic_effects(
                 LUNAR_ECCENTRICITY,
                 LUNAR_MEAN_MOTION,
@@ -669,23 +674,23 @@ impl<'a> propagator::Constants<'a> {
             + (solar_delta_inclination + lunar_delta_inclination);
         let (right_ascension, argument_of_perigee) = if inclination >= 0.2 {
             (
-                // Ω = p₂₁ + (lₛ₅ + lₗ₅) / sin I
-                p21 + (ls5 + lp6) / inclination.sin(),
-                // ω = p₂₂ + (lₛ₄ + lₗ₄) - cos I (lₛ₅ + lₗ₅) / sin I
-                p22 + (ls4 + lp5) - inclination.cos() * ((ls5 + lp6) / inclination.sin()),
+                // Ω = p₂₁ + (pₛ₅ + pₗ₅) / sin I
+                p21 + (ps5 + pl5) / inclination.sin(),
+                // ω = p₂₂ + (pₛ₄ + pₗ₄) - cos I (pₛ₅ + pₗ₅) / sin I
+                p22 + (ps4 + pl4) - inclination.cos() * ((ps5 + pl5) / inclination.sin()),
             )
         } else {
-            //             sin I sin p₂₁ + (lₛ₅ + lₗ₅) cos p₂₁ + (δIₛ + δIₗ) cos I sin p₂₁
+            //             sin I sin p₂₁ + (pₛ₅ + pₗ₅) cos p₂₁ + (δIₛ + δIₗ) cos I sin p₂₁
             // p₂₈ = tan⁻¹ -------------------------------------------------------------
-            //             sin I cos p₂₁ - (lₛ₅ + lₗ₅) sin p₂₁ + (δIₛ + δIₗ) cos I cos p₂₁
+            //             sin I cos p₂₁ - (pₛ₅ + pₗ₅) sin p₂₁ + (δIₛ + δIₗ) cos I cos p₂₁
             let p28 = (inclination.sin() * p21.sin()
-                + ((ls5 + lp6) * p21.cos()
+                + ((ps5 + pl5) * p21.cos()
                     + (solar_delta_inclination + lunar_delta_inclination)
                         * inclination.cos()
                         * p21.sin()))
             .atan2(
                 inclination.sin() * p21.cos()
-                    + (-(ls5 + lp6) * p21.sin()
+                    + (-(ps5 + pl5) * p21.sin()
                         + (solar_delta_inclination + lunar_delta_inclination)
                             * inclination.cos()
                             * p21.cos()),
@@ -703,11 +708,11 @@ impl<'a> propagator::Constants<'a> {
             };
             (
                 right_ascension,
-                // ω = │ p₂₂ + (lₛ₄ + lₗ₄) + cos I ((p₂₁ rem 2π) - Ω)
+                // ω = │ p₂₂ + (pₛ₄ + pₗ₄) + cos I ((p₂₁ rem 2π) - Ω)
                 //     │ - (δIₛ + δIₗ) (p₂₁ mod 2π) sin I             if AFSPC compatibility mode
-                // ω = │ p₂₂ + (lₛ₄ + lₗ₄) + cos I ((p₂₁ rem 2π) - Ω)
+                // ω = │ p₂₂ + (pₛ₄ + pₗ₄) + cos I ((p₂₁ rem 2π) - Ω)
                 //     │ - (δIₛ + δIₗ) (p₂₁ rem 2π) sin I             otherwise
-                p22 + (ls4 + lp5) + inclination.cos() * (p21 % (2.0 * model::PI) - right_ascension)
+                p22 + (ps4 + pl4) + inclination.cos() * (p21 % (2.0 * model::PI) - right_ascension)
                     - (solar_delta_inclination + lunar_delta_inclination)
                         * if afspc_compatibility_mode {
                             p21.rem_euclid(2.0 * model::PI)
@@ -754,7 +759,7 @@ impl<'a> propagator::Constants<'a> {
                     -0.5 * (self.geopotential.j3 / self.geopotential.j2) * inclination.sin(),
                     // p₃₁ = 1 - cos²I
                     1.0 - inclination.cos().powi(2),
-                    // p₃₂ = k₄
+                    // p₃₂ = 7 cos²I - 1
                     7.0 * inclination.cos().powi(2) - 1.0,
                     //       │   1 J₃       3 + 5 cos I
                     // p₃₃ = │ - - -- sin I ----------- if |1 + cos I| > 1.5 × 10⁻¹²
@@ -775,7 +780,7 @@ impl<'a> propagator::Constants<'a> {
                             * (3.0 + 5.0 * inclination.cos())
                             / 1.5e-12
                     },
-                    // p₃₄ = k₆
+                    // p₃₄ = 3 cos²I - 1
                     3.0 * inclination.cos().powi(2) - 1.0,
                 ))
             }

@@ -29,16 +29,16 @@ impl Orbit {
                 let a1 = (geopotential.ke / kozai_mean_motion).powf(2.0 / 3.0);
 
                 //      3      3 cos²I₀
-                // p₂ = - J₂ -----------
+                // p₀ = - J₂ -----------
                 //      4    (1 − e₀²)³ᐟ²
-                let p2 = 0.75 * geopotential.j2 * (3.0 * inclination.cos().powi(2) - 1.0)
+                let p0 = 0.75 * geopotential.j2 * (3.0 * inclination.cos().powi(2) - 1.0)
                     / (1.0 - eccentricity.powi(2)).powf(3.0 / 2.0);
 
-                // 𝛿₁ = p₂ / a₁²
-                let d1 = p2 / a1.powi(2);
+                // 𝛿₁ = p₀ / a₁²
+                let d1 = p0 / a1.powi(2);
 
-                // 𝛿₀ = p₂ / (a₁ (1 - ¹/₃ 𝛿₁ - 𝛿₁² - ¹³⁴/₈₁ 𝛿₁³))²
-                let d0 = p2
+                // 𝛿₀ = p₀ / (a₁ (1 - ¹/₃ 𝛿₁ - 𝛿₁² - ¹³⁴/₈₁ 𝛿₁³))²
+                let d0 = p0
                     / (a1 * (1.0 - d1.powi(2) - d1 * (1.0 / 3.0 + 134.0 * d1.powi(2) / 81.0)))
                         .powi(2);
 
@@ -85,14 +85,14 @@ impl<'a> Constants<'a> {
         if orbit_0.eccentricity < 0.0 || orbit_0.eccentricity >= 1.0 {
             Err(Error::new("the eccentricity must be in the range [0, 1["))
         } else {
-            // p₀ = cos I₀
-            let p0 = orbit_0.inclination.cos();
+            // p₁ = cos I₀
+            let p1 = orbit_0.inclination.cos();
 
-            // p₁ = 1 − e₀²
-            let p1 = 1.0 - orbit_0.eccentricity.powi(2);
+            // p₂ = 1 − e₀²
+            let p2 = 1.0 - orbit_0.eccentricity.powi(2);
 
-            // k₆ = 3 p₀² - 1
-            let k6 = 3.0 * p0.powi(2) - 1.0;
+            // k₆ = 3 p₁² - 1
+            let k6 = 3.0 * p1.powi(2) - 1.0;
 
             // a₀" = (kₑ / n₀")²ᐟ³
             let a0 = (geopotential.ke / orbit_0.mean_motion).powf(2.0 / 3.0);
@@ -103,9 +103,9 @@ impl<'a> Constants<'a> {
             // perigee = aₑ (p₃ - 1)
             let perigee = geopotential.ae * (p3 - 1.0);
 
-            // p₄ = │ 20             if perigee < 98
-            //      │ (perigee - 78) if 98 ≤ perigee < 156
-            //      │ 78             otherwise
+            // p₄ = │ 20           if perigee < 98
+            //      │ perigee - 78 if 98 ≤ perigee < 156
+            //      │ 78           otherwise
             // s = p₄ / aₑ + 1
             // p₅ = ((120 - p₄) / aₑ)⁴
             let (s, p5) = {
@@ -150,11 +150,11 @@ impl<'a> Constants<'a> {
                             * k6
                             * (8.0 + 3.0 * eta.powi(2) * (8.0 + eta.powi(2)))));
 
-            // p₉ = (a₀" p₁)⁻²
-            let p9 = 1.0 / (a0 * p1).powi(2);
+            // p₉ = (a₀" p₂)⁻²
+            let p9 = 1.0 / (a0 * p2).powi(2);
 
-            // β₀ = p₁¹ᐟ²
-            let b0 = p1.sqrt();
+            // β₀ = p₂¹ᐟ²
+            let b0 = p2.sqrt();
 
             // p₁₀ = ³/₂ J₂ p₉ n₀"
             let p10 = 1.5 * geopotential.j2 * p9 * orbit_0.mean_motion;
@@ -165,32 +165,31 @@ impl<'a> Constants<'a> {
             // p₁₂ = - ¹⁵/₃₂ J₄ p₉² n₀"
             let p12 = -0.46875 * geopotential.j4 * p9.powi(2) * orbit_0.mean_motion;
 
-            // p₁₃ = - p₁₀ p₀ + (¹/₂ p₁₁ (4 - 19 p₀²) + 2 p₁₂ (3 - 7 p₀²)) p₀
-            let p13 = -p10 * p0
-                + (0.5 * p11 * (4.0 - 19.0 * p0.powi(2)) + 2.0 * p12 * (3.0 - 7.0 * p0.powi(2)))
-                    * p0;
+            // p₁₃ = - p₁₀ p₁ + (¹/₂ p₁₁ (4 - 19 p₁²) + 2 p₁₂ (3 - 7 p₁²)) p₁
+            let p13 = -p10 * p1
+                + (0.5 * p11 * (4.0 - 19.0 * p1.powi(2)) + 2.0 * p12 * (3.0 - 7.0 * p1.powi(2)))
+                    * p1;
 
-            // k₁₄ = - ¹/₂ p₁₀ (1 - 5 p₀²) + ¹/₁₆ p₁₁ (7 - 114 p₀² + 395 p₀⁴)
-            let k14 = -0.5 * p10 * (1.0 - 5.0 * p0.powi(2))
-                + 0.0625 * p11 * (7.0 - 114.0 * p0.powi(2) + 395.0 * p0.powi(4))
-                + p12 * (3.0 - 36.0 * p0.powi(2) + 49.0 * p0.powi(4));
+            // k₁₄ = - ¹/₂ p₁₀ (1 - 5 p₁²) + ¹/₁₆ p₁₁ (7 - 114 p₁² + 395 p₁⁴)
+            let k14 = -0.5 * p10 * (1.0 - 5.0 * p1.powi(2))
+                + 0.0625 * p11 * (7.0 - 114.0 * p1.powi(2) + 395.0 * p1.powi(4))
+                + p12 * (3.0 - 36.0 * p1.powi(2) + 49.0 * p1.powi(4));
 
-            // p₁₄ = n₀" + ¹/₂ p₁₀ β₀ k₆ + ¹/₁₆ p₁₁ β₀ (13 - 78 p₀² + 137 p₀⁴)
+            // p₁₄ = n₀" + ¹/₂ p₁₀ β₀ k₆ + ¹/₁₆ p₁₁ β₀ (13 - 78 p₁² + 137 p₁⁴)
             let p14 = orbit_0.mean_motion
                 + 0.5 * p10 * b0 * k6
-                + 0.0625 * p11 * b0 * (13.0 - 78.0 * p0.powi(2) + 137.0 * p0.powi(4));
+                + 0.0625 * p11 * b0 * (13.0 - 78.0 * p1.powi(2) + 137.0 * p1.powi(4));
 
-            //
-            // C₄ = 2 n₀" p₈ a₀" p₁ [
+            // C₄ = 2 n₀" p₈ a₀" p₂ (
             //      η (2 + ¹/₂ η²)
             //      + e₀ (¹/₂ + 2 η²)
             //      - J₂ ξ / (a p₇) (-3 k₆ (1 - 2 e₀ η + η² (³/₂ - ¹/₂ e₀ η))
-            //      + ³/₄ (1 - p₀²) (2 η² - e₀ η (1 + η²)) cos 2 ω₀]
+            //      + ³/₄ (1 - p₁²) (2 η² - e₀ η (1 + η²)) cos 2 ω₀)
             let c4 = 2.0
                 * orbit_0.mean_motion
                 * p8
                 * a0
-                * p1
+                * p2
                 * (eta * (2.0 + 0.5 * eta.powi(2))
                     + orbit_0.eccentricity * (0.5 + 2.0 * eta.powi(2))
                     - geopotential.j2 * xi / (a0 * p7)
@@ -199,13 +198,13 @@ impl<'a> Constants<'a> {
                             * (1.0 - 2.0 * orbit_0.eccentricity * eta
                                 + eta.powi(2) * (1.5 - 0.5 * orbit_0.eccentricity * eta))
                             + 0.75
-                                * (1.0 - p0.powi(2))
+                                * (1.0 - p1.powi(2))
                                 * (2.0 * eta.powi(2)
                                     - orbit_0.eccentricity * eta * (1.0 + eta.powi(2)))
                                 * (2.0 * orbit_0.argument_of_perigee).cos()));
 
-            // k₀ = - ⁷/₂ p₁ p₁₀ p₀ C₁
-            let k0 = 3.5 * p1 * (-p10 * p0) * c1;
+            // k₀ = - ⁷/₂ p₂ p₁₀ p₁ C₁
+            let k0 = 3.5 * p2 * (-p10 * p1) * c1;
 
             // k₁ = ³/₂ C₁
             let k1 = 1.5 * c1;
@@ -215,7 +214,7 @@ impl<'a> Constants<'a> {
                     geopotential,
                     drag_term,
                     orbit_0,
-                    p0,
+                    p1,
                     a0,
                     s,
                     xi,
@@ -226,7 +225,7 @@ impl<'a> Constants<'a> {
                     k1,
                     k6,
                     k14,
-                    p1,
+                    p2,
                     p3,
                     p6,
                     p8,
@@ -240,7 +239,7 @@ impl<'a> Constants<'a> {
                     t0,
                     drag_term,
                     orbit_0,
-                    p0,
+                    p1,
                     a0,
                     c1,
                     b0,
@@ -248,7 +247,7 @@ impl<'a> Constants<'a> {
                     k0,
                     k1,
                     k14,
-                    p1,
+                    p2,
                     p13,
                     p14,
                 ))
@@ -323,13 +322,24 @@ impl<'a> Constants<'a> {
                 k4,
                 k5,
                 k6,
-                full,
+                high_altitude,
             } => {
                 assert!(
                     state.is_none(),
                     "state must be None with a near-earth propagator",
                 );
-                self.near_earth_orbital_elements(*a0, *k2, *k3, *k4, *k5, *k6, full, t, p21, p22)
+                self.near_earth_orbital_elements(
+                    *a0,
+                    *k2,
+                    *k3,
+                    *k4,
+                    *k5,
+                    *k6,
+                    high_altitude,
+                    t,
+                    p21,
+                    p22,
+                )
             }
             propagator::Method::DeepSpace {
                 eccentricity_dot,
@@ -351,32 +361,32 @@ impl<'a> Constants<'a> {
             ),
         }?;
 
-        // p₂₇ = 1 / (a (1 - e²))
-        let p27 = 1.0 / (a * (1.0 - orbit.eccentricity.powi(2)));
+        // p₃₅ = 1 / (a (1 - e²))
+        let p35 = 1.0 / (a * (1.0 - orbit.eccentricity.powi(2)));
 
         // aₓₙ = e cos ω
         let axn = orbit.eccentricity * orbit.argument_of_perigee.cos();
 
-        // aᵧₙ = e sin ω + p₂₇ p₃₀
-        let ayn = orbit.eccentricity * orbit.argument_of_perigee.sin() + p27 * p30;
+        // aᵧₙ = e sin ω + p₃₅ p₃₀
+        let ayn = orbit.eccentricity * orbit.argument_of_perigee.sin() + p35 * p30;
 
-        // p₃₅ = 𝕃 + ω + p₂₇ p₃₃ aₓₙ rem 2π
-        let p35 = (l + orbit.argument_of_perigee + p27 * p33 * axn) % (2.0 * model::PI);
+        // p₃₆ = 𝕃 + ω + p₃₅ p₃₃ aₓₙ rem 2π
+        let p36 = (l + orbit.argument_of_perigee + p35 * p33 * axn) % (2.0 * model::PI);
 
-        // (E + ω)₀ = p₃₅
-        let mut ew = p35;
+        // (E + ω)₀ = p₃₆
+        let mut ew = p36;
         for _ in 0..10 {
-            //             p₃₅ - aᵧₙ cos (E + ω)ᵢ + aₓₙ sin (E + ω)ᵢ - (E + ω)ᵢ
+            //             p₃₆ - aᵧₙ cos (E + ω)ᵢ + aₓₙ sin (E + ω)ᵢ - (E + ω)ᵢ
             // Δ(E + ω)ᵢ = ---------------------------------------------------
             //                   1 - cos (E + ω)ᵢ aₓₙ - sin (E + ω)ᵢ aᵧₙ
-            let delta = (p35 - ayn * ew.cos() + axn * ew.sin() - ew)
+            let delta = (p36 - ayn * ew.cos() + axn * ew.sin() - ew)
                 / (1.0 - ew.cos() * axn - ew.sin() * ayn);
 
             if delta.abs() < 1.0e-12 {
                 break;
             }
 
-            // (E + ω)ᵢ₊₁ = (E + ω)ᵢ + Δ|[-0.95, 0.95]
+            // (E + ω)ᵢ₊₁ = (E + ω)ᵢ + Δ(E + ω)ᵢ|[-0.95, 0.95]
             ew += if delta < -0.95 {
                 -0.95
             } else if delta > 0.95 {
@@ -386,75 +396,75 @@ impl<'a> Constants<'a> {
             };
         }
 
-        // p₃₆ = aₓₙ² + aᵧₙ²
-        let p36 = axn.powi(2) + ayn.powi(2);
+        // p₃₇ = aₓₙ² + aᵧₙ²
+        let p37 = axn.powi(2) + ayn.powi(2);
 
-        // pₗ = a (1 - p₃₆)
-        let pl = a * (1.0 - p36);
+        // pₗ = a (1 - p₃₇)
+        let pl = a * (1.0 - p37);
         if pl < 0.0 {
             Err(Error::new("negative semi-latus rectum"))
         } else {
-            // p₃₇ = aₓₙ cos(E + ω) + aᵧₙ sin(E + ω)
-            let p37 = axn * ew.cos() + ayn * ew.sin();
+            // p₃₈ = aₓₙ cos(E + ω) + aᵧₙ sin(E + ω)
+            let p38 = axn * ew.cos() + ayn * ew.sin();
 
-            // p₃₈ = aₓₙ sin(E + ω) - aᵧₙ cos(E + ω)
-            let p38 = axn * ew.sin() - ayn * ew.cos();
+            // p₃₉ = aₓₙ sin(E + ω) - aᵧₙ cos(E + ω)
+            let p39 = axn * ew.sin() - ayn * ew.cos();
 
-            // r = a (1 - p₃₇)
-            let r = a * (1.0 - p37);
+            // r = a (1 - p₃₈)
+            let r = a * (1.0 - p38);
 
-            // ṙ = a¹ᐟ² p₃₈ / r
-            let r_dot = a.sqrt() * p38 / r;
+            // ṙ = a¹ᐟ² p₃₉ / r
+            let r_dot = a.sqrt() * p39 / r;
 
-            // β = (1 - p₃₆)¹ᐟ²
-            let b = (1.0 - p36).sqrt();
+            // β = (1 - p₃₇)¹ᐟ²
+            let b = (1.0 - p37).sqrt();
 
-            // p₃₉ = p₃₈ / (1 + β)
-            let p39 = p38 / (1.0 + b);
+            // p₄₀ = p₃₉ / (1 + β)
+            let p40 = p39 / (1.0 + b);
 
-            // p₄₀ = a / r (sin(E + ω) - aᵧₙ - aₓₙ p₃₉)
-            let p40 = a / r * (ew.sin() - ayn - axn * p39);
+            // p₄₁ = a / r (sin(E + ω) - aᵧₙ - aₓₙ p₄₀)
+            let p41 = a / r * (ew.sin() - ayn - axn * p40);
 
-            // p₄₁ = a / r (cos(E + ω) - aₓₙ + aᵧₙ p₃₉)
-            let p41 = a / r * (ew.cos() - axn + ayn * p39);
+            // p₄₂ = a / r (cos(E + ω) - aₓₙ + aᵧₙ p₄₀)
+            let p42 = a / r * (ew.cos() - axn + ayn * p40);
 
-            //           p₄₀
-            // u = tan⁻¹ ---
             //           p₄₁
-            let u = p40.atan2(p41);
+            // u = tan⁻¹ ---
+            //           p₄₂
+            let u = p41.atan2(p42);
 
-            // p₄₂ = 2 p₄₁ p₄₀
-            let p42 = 2.0 * p41 * p40;
+            // p₄₃ = 2 p₄₂ p₄₁
+            let p43 = 2.0 * p42 * p41;
 
-            // p₄₃ = 1 - 2 p₄₀²
-            let p43 = 1.0 - 2.0 * p40.powi(2);
+            // p₄₄ = 1 - 2 p₄₁²
+            let p44 = 1.0 - 2.0 * p41.powi(2);
 
-            // p₄₄ = (¹/₂ J₂ / pₗ) / pₗ
-            let p44 = 0.5 * self.geopotential.j2 / pl / pl;
+            // p₄₅ = (¹/₂ J₂ / pₗ) / pₗ
+            let p45 = 0.5 * self.geopotential.j2 / pl / pl;
 
-            // rₖ = r (1 - ³/₂ p₄₄ β p₃₄) + ¹/₂ (¹/₂ J₂ / pₗ) p₃₁ p₄₃
-            let rk = r * (1.0 - 1.5 * p44 * b * p34)
-                + 0.5 * (0.5 * self.geopotential.j2 / pl) * p31 * p43;
+            // rₖ = r (1 - ³/₂ p₄₅ β p₃₄) + ¹/₂ (¹/₂ J₂ / pₗ) p₃₁ p₄₄
+            let rk = r * (1.0 - 1.5 * p45 * b * p34)
+                + 0.5 * (0.5 * self.geopotential.j2 / pl) * p31 * p44;
 
-            // uₖ = u - ¹/₄ p₄₄ p₃₂ p₄₂
-            let uk = u - 0.25 * p44 * p32 * p42;
+            // uₖ = u - ¹/₄ p₄₅ p₃₂ p₄₃
+            let uk = u - 0.25 * p45 * p32 * p43;
 
-            // Ωₖ = Ω + ³/₂ p₄₄ cos I p₄₂
+            // Ωₖ = Ω + ³/₂ p₄₅ cos I p₄₃
             let right_ascension_k =
-                orbit.right_ascension + 1.5 * p44 * orbit.inclination.cos() * p42;
+                orbit.right_ascension + 1.5 * p45 * orbit.inclination.cos() * p43;
 
-            // Iₖ = I + ³/₂ p₄₄ cos I sin I p₄₃
+            // Iₖ = I + ³/₂ p₄₅ cos I sin I p₄₄
             let inclination_k = orbit.inclination
-                + 1.5 * p44 * orbit.inclination.cos() * orbit.inclination.sin() * p43;
+                + 1.5 * p45 * orbit.inclination.cos() * orbit.inclination.sin() * p44;
 
             // ṙₖ = ṙ + n (¹/₂ J₂ / pₗ) p₃₁ / kₑ
             let rk_dot = r_dot
-                - orbit.mean_motion * (0.5 * self.geopotential.j2 / pl) * p31 * p42
+                - orbit.mean_motion * (0.5 * self.geopotential.j2 / pl) * p31 * p43
                     / self.geopotential.ke;
 
-            // rḟₖ = pₗ¹ᐟ² / r + n (¹/₂ J₂ / pₗ) (p₃₁ p₄₃ + ³/₂ p₃₄) / kₑ
+            // rḟₖ = pₗ¹ᐟ² / r + n (¹/₂ J₂ / pₗ) (p₃₁ p₄₄ + ³/₂ p₃₄) / kₑ
             let rfk_dot = pl.sqrt() / r
-                + orbit.mean_motion * (0.5 * self.geopotential.j2 / pl) * (p31 * p43 + 1.5 * p34)
+                + orbit.mean_motion * (0.5 * self.geopotential.j2 / pl) * (p31 * p44 + 1.5 * p34)
                     / self.geopotential.ke;
 
             // u₀ = - sin Ωₖ cos Iₖ sin uₖ + cos Ωₖ cos uₖ

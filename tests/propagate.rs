@@ -1,4 +1,4 @@
-#[path="../test_cases.rs"]
+#[path = "../test_cases.rs"]
 mod test_cases;
 use test_cases::*;
 
@@ -13,18 +13,19 @@ fn propagate() -> sgp4::Result<()> {
         )?)?;
         for state in &test_case.states {
             match state {
-                State::Ok {time, position, velocity, ..} => {
+                State::Ok {
+                    time,
+                    position,
+                    velocity,
+                    ..
+                } => {
                     let prediction = constants.propagate_afspc_compatibility_mode(*time)?;
                     for index in 0..3 {
-                        assert!(
-                            (position[index] - prediction.position[index]).abs() < 1.0e-6
-                        );
-                        assert!(
-                            (velocity[index] - prediction.velocity[index]).abs() < 1.0e-9
-                        );
+                        assert!((position[index] - prediction.position[index]).abs() < 1.0e-6);
+                        assert!((velocity[index] - prediction.velocity[index]).abs() < 1.0e-9);
                     }
-                },
-                State::Err {time, error} => {
+                }
+                State::Err { time, error } => {
                     let prediction = constants.propagate_afspc_compatibility_mode(*time);
                     if let Err(prediction_error) = prediction {
                         assert_eq!(&format!("{}", prediction_error), error);

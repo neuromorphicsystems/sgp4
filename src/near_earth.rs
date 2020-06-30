@@ -5,7 +5,7 @@ pub fn constants<'a>(
     geopotential: &'a model::Geopotential,
     drag_term: f64,
     orbit_0: propagator::Orbit,
-    p0: f64,
+    p1: f64,
     a0: f64,
     s: f64,
     xi: f64,
@@ -16,7 +16,7 @@ pub fn constants<'a>(
     k1: f64,
     k6: f64,
     k14: f64,
-    p1: f64,
+    p2: f64,
     p3: f64,
     p6: f64,
     p8: f64,
@@ -47,34 +47,36 @@ pub fn constants<'a>(
             //        2 J₂
             k2: -0.5 * (geopotential.j3 / geopotential.j2) * orbit_0.inclination.sin(),
 
-            // k₃ = 1 - p₀²
-            k3: 1.0 - p0.powi(2),
+            // k₃ = 1 - p₁²
+            k3: 1.0 - p1.powi(2),
 
-            // k₄ = 7 p₀² - 1
-            k4: 7.0 * p0.powi(2) - 1.0,
+            // k₄ = 7 p₁² - 1
+            k4: 7.0 * p1.powi(2) - 1.0,
 
-            //      │   1 J₃        3 + 5 p₀
-            // k₅ = │ - - -- sin I₀ --------    if |1 + p₀| > 1.5 × 10⁻¹²
-            //      │   4 J₂         1 + p₀
-            //      │   1 J₃         3 + 5 p₀
+            //      │   1 J₃        3 + 5 p₁
+            // k₅ = │ - - -- sin I₀ --------    if |1 + p₁| > 1.5 × 10⁻¹²
+            //      │   4 J₂         1 + p₁
+            //      │   1 J₃         3 + 5 p₁
             //      │ - - -- sin I₀ ----------- otherwise
             //      │   4 J₂        1.5 × 10⁻¹²
-            k5: if (1.0 + p0).abs() > 1.5e-12 {
+            k5: if (1.0 + p1).abs() > 1.5e-12 {
                 -0.25
                     * (geopotential.j3 / geopotential.j2)
                     * orbit_0.inclination.sin()
-                    * (3.0 + 5.0 * p0)
-                    / (1.0 + p0)
+                    * (3.0 + 5.0 * p1)
+                    / (1.0 + p1)
             } else {
                 -0.25
                     * (geopotential.j3 / geopotential.j2)
                     * orbit_0.inclination.sin()
-                    * (3.0 + 5.0 * p0)
+                    * (3.0 + 5.0 * p1)
                     / 1.5e-12
             },
             k6: k6,
-            full: if p3 < 220.0 / geopotential.ae + 1.0 {
-                propagator::Full::No {}
+
+            // p₃ < 220 / (aₑ + 1)
+            high_altitude: if p3 < 220.0 / geopotential.ae + 1.0 {
+                propagator::HighAltitude::No {}
             } else {
                 // D₂ = 4 a₀" ξ C₁²
                 let d2 = 4.0 * a0 * xi * c1.powi(2);
@@ -85,15 +87,15 @@ pub fn constants<'a>(
                 // D₃ = (17 a + s) p₁₅
                 let d3 = (17.0 * a0 + s) * p15;
 
-                // D₄ = 0.5 p₁₅ a₀" ξ (221 a₀" + 31 s) C₁;
+                // D₄ = ¹/₂ p₁₅ a₀" ξ (221 a₀" + 31 s) C₁
                 let d4 = 0.5 * p15 * a0 * xi * (221.0 * a0 + 31.0 * s) * c1;
 
-                propagator::Full::Yes {
-                    // C₅ = 2 p₈ a₀" p₁ (1 + 2.75 (η² + η e₀) + e₀ η³)
+                propagator::HighAltitude::Yes {
+                    // C₅ = 2 p₈ a₀" p₂ (1 + 2.75 (η² + η e₀) + e₀ η³)
                     c5: 2.0
                         * p8
                         * a0
-                        * p1
+                        * p2
                         * (1.0
                             + 2.75 * (eta.powi(2) + eta * orbit_0.eccentricity)
                             + eta * orbit_0.eccentricity * eta.powi(2)),
@@ -123,9 +125,9 @@ pub fn constants<'a>(
 
                     elliptic: if orbit_0.eccentricity > 1.0e-4 {
                         propagator::Elliptic::Yes {
-                            //                    J₃ p₆ ξ  n₀" sin I₀
+                            //                     J₃ p₆ ξ  n₀" sin I₀
                             // k₁₂ = - 2 B* cos ω₀ -- ----------------
-                            //                    J₂        e₀
+                            //                     J₂        e₀
                             k12: drag_term
                                 * (-2.0
                                     * p6
@@ -160,15 +162,15 @@ impl<'a> propagator::Constants<'a> {
         k4: f64,
         k5: f64,
         k6: f64,
-        full: &propagator::Full,
+        high_altitude: &propagator::HighAltitude,
         t: f64,
         p21: f64,
         p22: f64,
     ) -> propagator::Result<(propagator::Orbit, f64, f64, f64, f64, f64, f64, f64)> {
         // p₂₃ = M₀ + Ṁ t
         let p23 = self.orbit_0.mean_anomaly + self.mean_anomaly_dot * t;
-        let (argument_of_perigee, mean_anomaly, a, l, p25) = match full {
-            propagator::Full::No {} => (
+        let (argument_of_perigee, mean_anomaly, a, l, p25) = match high_altitude {
+            propagator::HighAltitude::No {} => (
                 // ω = p₂₂
                 p22,
                 // M = p₂₃
@@ -180,7 +182,7 @@ impl<'a> propagator::Constants<'a> {
                 // p₂₅ = e₀ - B* C₄ t
                 self.orbit_0.eccentricity - self.drag_term * self.c4 * t,
             ),
-            propagator::Full::Yes {
+            propagator::HighAltitude::Yes {
                 c5,
                 d2,
                 d3,

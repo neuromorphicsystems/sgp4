@@ -6,7 +6,6 @@ pub enum State {
         position: [f64; 3],
         velocity: [f64; 3],
         date: Option<toml::value::Datetime>,
-
     },
     Err {
         time: f64,

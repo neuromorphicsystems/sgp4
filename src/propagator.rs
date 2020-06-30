@@ -41,7 +41,7 @@ pub enum Elliptic {
     Yes { k12: f64, k13: f64 },
 }
 
-pub enum Full {
+pub enum HighAltitude {
     No {},
     Yes {
         c5: f64,
@@ -99,7 +99,7 @@ pub enum Method {
         k4: f64,
         k5: f64,
         k6: f64,
-        full: Full,
+        high_altitude: HighAltitude,
     },
     DeepSpace {
         eccentricity_dot: f64,

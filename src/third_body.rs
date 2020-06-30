@@ -42,8 +42,8 @@ pub struct Dots {
 // third_body_argument_of_perigee_cosine: the cosine of the third body's argument of perigee cos ωₓ
 // third_body_perturbation_coefficient: linear scaling factor Cₓ, in rad.min⁻¹
 // third_body_mean_motion: the third body's mean motion nₓ
-// p0: the constant p₀ = 1 − e₀²
-// b0: the constant β₀ = p₀¹ᐟ²
+// p1: the constant p₁ = 1 − e₀²
+// b0: the constant β₀ = p₁¹ᐟ²
 pub fn perturbations_and_dots(
     inclination_0: f64,
     eccentricity_0: f64,
@@ -59,191 +59,192 @@ pub fn perturbations_and_dots(
     third_body_perturbation_coefficient: f64,
     third_body_mean_motion: f64,
     third_body_mean_anomaly_0: f64,
-    p0: f64,
+    p1: f64,
     b0: f64,
 ) -> (Perturbations, Dots) {
-    // a₁ = cos ωₓ cos(Ω₀ - Ωₓ) + sin ωₓ cos Iₓ sin(Ω₀ - Ωₓ)
-    let a1 = third_body_argument_of_perigee_cosine * delta_right_ascension_cosine
+    // aₓ₁ = cos ωₓ cos(Ω₀ - Ωₓ) + sin ωₓ cos Iₓ sin(Ω₀ - Ωₓ)
+    let ax1 = third_body_argument_of_perigee_cosine * delta_right_ascension_cosine
         + third_body_argument_of_perigee_sine
             * third_body_inclination_0_cosine
             * delta_right_ascension_sine;
 
-    // a₃ = - sin ωₓ cos(Ω₀ - Ωₓ) + cos ωₓ cos Iₓ sin(Ω₀ - Ωₓ)
-    let a3 = -third_body_argument_of_perigee_sine * delta_right_ascension_cosine
+    // aₓ₃ = - sin ωₓ cos(Ω₀ - Ωₓ) + cos ωₓ cos Iₓ sin(Ω₀ - Ωₓ)
+    let ax3 = -third_body_argument_of_perigee_sine * delta_right_ascension_cosine
         + third_body_argument_of_perigee_cosine
             * third_body_inclination_0_cosine
             * delta_right_ascension_sine;
 
-    // a₇ = - cos ωₓ sin(Ω₀ - Ωₓ) + sin ωₓ cos Iₓ cos(Ω₀ - Ωₓ)
-    let a7 = -third_body_argument_of_perigee_cosine * delta_right_ascension_sine
+    // aₓ₇ = - cos ωₓ sin(Ω₀ - Ωₓ) + sin ωₓ cos Iₓ cos(Ω₀ - Ωₓ)
+    let ax7 = -third_body_argument_of_perigee_cosine * delta_right_ascension_sine
         + third_body_argument_of_perigee_sine
             * third_body_inclination_0_cosine
             * delta_right_ascension_cosine;
 
-    // a₈ = sin ωₓ sin Iₓ
-    let a8 = third_body_argument_of_perigee_sine * third_body_inclination_0_sine;
+    // aₓ₈ = sin ωₓ sin Iₓ
+    let ax8 = third_body_argument_of_perigee_sine * third_body_inclination_0_sine;
 
-    // a₉ = sin ωₓ sin(Ω₀ - Ωₓ) + cos ωₓ cos Iₓ cos(Ω₀ - Ωₓ)
-    let a9 = third_body_argument_of_perigee_sine * delta_right_ascension_sine
+    // aₓ₉ = sin ωₓ sin(Ω₀ - Ωₓ) + cos ωₓ cos Iₓ cos(Ω₀ - Ωₓ)
+    let ax9 = third_body_argument_of_perigee_sine * delta_right_ascension_sine
         + third_body_argument_of_perigee_cosine
             * third_body_inclination_0_cosine
             * delta_right_ascension_cosine;
 
-    // a₁₀ = cos ωₓ sin Iₓ
-    let a10 = third_body_argument_of_perigee_cosine * third_body_inclination_0_sine;
+    // aₓ₁₀ = cos ωₓ sin Iₓ
+    let ax10 = third_body_argument_of_perigee_cosine * third_body_inclination_0_sine;
 
-    // a₂ = a₇ cos i₀ + a₈ sin i₀
-    let a2 = inclination_0.cos() * a7 + inclination_0.sin() * a8;
+    // aₓ₂ = aₓ₇ cos I₀ + aₓ₈ sin I₀
+    let ax2 = inclination_0.cos() * ax7 + inclination_0.sin() * ax8;
 
-    // a₄ = a₉ cos i₀ + a₁₀ sin i₀
-    let a4 = inclination_0.cos() * a9 + inclination_0.sin() * a10;
+    // aₓ₄ = aₓ₉ cos I₀ + aₓ₁₀ sin I₀
+    let ax4 = inclination_0.cos() * ax9 + inclination_0.sin() * ax10;
 
-    // a₅ = - a₇ sin i₀ + a₈ cos i₀
-    let a5 = -inclination_0.sin() * a7 + inclination_0.cos() * a8;
+    // aₓ₅ = - aₓ₇ sin I₀ + aₓ₈ cos I₀
+    let ax5 = -inclination_0.sin() * ax7 + inclination_0.cos() * ax8;
 
-    // a₆ = - a₉ sin i₀ + a₁₀ cos i₀
-    let a6 = -inclination_0.sin() * a9 + inclination_0.cos() * a10;
+    // aₓ₆ = - aₓ₉ sin I₀ + aₓ₁₀ cos I₀
+    let ax6 = -inclination_0.sin() * ax9 + inclination_0.cos() * ax10;
 
-    // X₁ = a₁ cos ω₀ + a₂ sin ω₀
-    let x1 = a1 * argument_of_perigee_0.cos() + a2 * argument_of_perigee_0.sin();
+    // Xₓ₁ = aₓ₁ cos ω₀ + aₓ₂ sin ω₀
+    let xx1 = ax1 * argument_of_perigee_0.cos() + ax2 * argument_of_perigee_0.sin();
 
-    // X₂ = a₃ cos ω₀ + a₄ sin ω₀
-    let x2 = a3 * argument_of_perigee_0.cos() + a4 * argument_of_perigee_0.sin();
+    // Xₓ₂ = aₓ₃ cos ω₀ + aₓ₄ sin ω₀
+    let xx2 = ax3 * argument_of_perigee_0.cos() + ax4 * argument_of_perigee_0.sin();
 
-    // X₃ = - a₁ sin ω₀ + a₂ cos ω₀
-    let x3 = -a1 * argument_of_perigee_0.sin() + a2 * argument_of_perigee_0.cos();
+    // Xₓ₃ = - aₓ₁ sin ω₀ + aₓ₂ cos ω₀
+    let xx3 = -ax1 * argument_of_perigee_0.sin() + ax2 * argument_of_perigee_0.cos();
 
-    // X₄ = - a₃ sin ω₀ + a₄ cos ω₀
-    let x4 = -a3 * argument_of_perigee_0.sin() + a4 * argument_of_perigee_0.cos();
+    // Xₓ₄ = - aₓ₃ sin ω₀ + aₓ₄ cos ω₀
+    let xx4 = -ax3 * argument_of_perigee_0.sin() + ax4 * argument_of_perigee_0.cos();
 
-    // X₅ = a₅ sin ω₀
-    let x5 = a5 * argument_of_perigee_0.sin();
+    // Xₓ₅ = aₓ₅ sin ω₀
+    let xx5 = ax5 * argument_of_perigee_0.sin();
 
-    // X₆ = a₆ sin ω₀
-    let x6 = a6 * argument_of_perigee_0.sin();
+    // Xₓ₆ = aₓ₆ sin ω₀
+    let xx6 = ax6 * argument_of_perigee_0.sin();
 
-    // X₇ = a₅ cos ω₀
-    let x7 = a5 * argument_of_perigee_0.cos();
+    // Xₓ₇ = aₓ₅ cos ω₀
+    let xx7 = ax5 * argument_of_perigee_0.cos();
 
-    // X₈ = a₆ cos ω₀
-    let x8 = a6 * argument_of_perigee_0.cos();
+    // Xₓ₈ = aₓ₆ cos ω₀
+    let xx8 = ax6 * argument_of_perigee_0.cos();
 
-    // Z₃₁ = 12 X₁² - 3 X₃²
-    let z31 = 12.0 * x1.powi(2) - 3.0 * x3.powi(2);
+    // Zₓ₃₁ = 12 Xₓ₁² - 3 Xₓ₃²
+    let zx31 = 12.0 * xx1.powi(2) - 3.0 * xx3.powi(2);
 
-    // Z₃₂ = 24 X₁ X₂ - 6 X₃ X₄
-    let z32 = 24.0 * x1 * x2 - 6.0 * x3 * x4;
+    // Zₓ₃₂ = 24 Xₓ₁ Xₓ₂ - 6 Xₓ₃ Xₓ₄
+    let zx32 = 24.0 * xx1 * xx2 - 6.0 * xx3 * xx4;
 
-    // Z₃₃ = 12 X₂² - 3 X₄²
-    let z33 = 12.0 * x2.powi(2) - 3.0 * x4.powi(2);
+    // Zₓ₃₃ = 12 Xₓ₂² - 3 Xₓ₄²
+    let zx33 = 12.0 * xx2.powi(2) - 3.0 * xx4.powi(2);
 
-    // Z₁₁ = -6.0 a₁ a₅ + e₀² (-24 X₁ X₇ - 6 X₃ X₅)
-    let z11 = -6.0 * a1 * a5 + eccentricity_0.powi(2) * (-24.0 * x1 * x7 - 6.0 * x3 * x5);
+    // Zₓ₁₁ = - 6 aₓ₁ aₓ₅ + e₀² (- 24 Xₓ₁ Xₓ₇ - 6 Xₓ₃ Xₓ₅)
+    let zx11 = -6.0 * ax1 * ax5 + eccentricity_0.powi(2) * (-24.0 * xx1 * xx7 - 6.0 * xx3 * xx5);
 
-    // Z₁₂ = -6 (a₁ a₆ + a₃ a₅) + e₀² (-24 (X₂ X₇ + X₁ X₈) - 6 (X₃ X₆ + X₄ X₅))
-    let z12 = -6.0 * (a1 * a6 + a3 * a5)
-        + eccentricity_0.powi(2) * (-24.0 * (x2 * x7 + x1 * x8) - 6.0 * (x3 * x6 + x4 * x5));
+    // Zₓ₁₂ = - 6 (aₓ₁ aₓ₆ + aₓ₃ aₓ₅) + e₀² (- 24 (Xₓ₂ Xₓ₇ + Xₓ₁ Xₓ₈) - 6 (Xₓ₃ Xₓ₆ + Xₓ₄ Xₓ₅))
+    let zx12 = -6.0 * (ax1 * ax6 + ax3 * ax5)
+        + eccentricity_0.powi(2)
+            * (-24.0 * (xx2 * xx7 + xx1 * xx8) - 6.0 * (xx3 * xx6 + xx4 * xx5));
 
-    // Z₁₃ = -6 a₃ a₆ + e₀² (-24 X₂ X₈ - 6 X₄ X₆)
-    let z13 = -6.0 * a3 * a6 + eccentricity_0.powi(2) * (-24.0 * x2 * x8 - 6.0 * x4 * x6);
+    // Zₓ₁₃ = - 6 aₓ₃ aₓ₆ + e₀² (-24 Xₓ₂ Xₓ₈ - 6 Xₓ₄ Xₓ₆)
+    let zx13 = -6.0 * ax3 * ax6 + eccentricity_0.powi(2) * (-24.0 * xx2 * xx8 - 6.0 * xx4 * xx6);
 
-    // Z₂₁ = 6 a₂ a₅ + e₀² (24.0 X₁ X₅ - 6 X₃ X₇)
-    let z21 = 6.0 * a2 * a5 + eccentricity_0.powi(2) * (24.0 * x1 * x5 - 6.0 * x3 * x7);
+    // Zₓ₂₁ = 6 aₓ₂ aₓ₅ + e₀² (24.0 Xₓ₁ Xₓ₅ - 6 Xₓ₃ Xₓ₇)
+    let zx21 = 6.0 * ax2 * ax5 + eccentricity_0.powi(2) * (24.0 * xx1 * xx5 - 6.0 * xx3 * xx7);
 
-    // Z₂₂ = 6 (a₄ a₅ + a₂ a₆) + e₀² (24 (X₂ X₅ + X₁ X₆) - 6 (X₄ X₇ + X₃ X₈))
-    let z22 = 6.0 * (a4 * a5 + a2 * a6)
-        + eccentricity_0.powi(2) * (24.0 * (x2 * x5 + x1 * x6) - 6.0 * (x4 * x7 + x3 * x8));
+    // Zₓ₂₂ = 6 (aₓ₄ aₓ₅ + aₓ₂ aₓ₆) + e₀² (24 (Xₓ₂ Xₓ₅ + Xₓ₁ Xₓ₆) - 6 (Xₓ₄ Xₓ₇ + Xₓ₃ Xₓ₈))
+    let zx22 = 6.0 * (ax4 * ax5 + ax2 * ax6)
+        + eccentricity_0.powi(2) * (24.0 * (xx2 * xx5 + xx1 * xx6) - 6.0 * (xx4 * xx7 + xx3 * xx8));
 
-    // Z₂₃ = 6 a₄ a₆ + e₀² (24 X₂ X₆ - 6 X₄ X₈)
-    let z23 = 6.0 * a4 * a6 + eccentricity_0.powi(2) * (24.0 * x2 * x6 - 6.0 * x4 * x8);
+    // Zₓ₂₃ = 6 aₓ₄ aₓ₆ + e₀² (24 Xₓ₂ Xₓ₆ - 6 Xₓ₄ Xₓ₈)
+    let zx23 = 6.0 * ax4 * ax6 + eccentricity_0.powi(2) * (24.0 * xx2 * xx6 - 6.0 * xx4 * xx8);
 
-    // Z₁ = 2 (3 (a₁² + a₂²) + Z₃₁ e₀²) + p₀ Z₃₁
-    let z1 = (3.0 * (a1.powi(2) + a2.powi(2)) + z31 * eccentricity_0.powi(2)) * 2.0 + p0 * z31;
+    // Zₓ₁ = 2 (3 (aₓ₁² + aₓ₂²) + Zₓ₃₁ e₀²) + p₁ Zₓ₃₁
+    let zx1 = (3.0 * (ax1.powi(2) + ax2.powi(2)) + zx31 * eccentricity_0.powi(2)) * 2.0 + p1 * zx31;
 
-    // Z₂ = 2 (6 (a₁ a₃ + a₂ a₄) + Z₃₂ e₀²) + p₀ Z₃₂
-    let z2 = (6.0 * (a1 * a3 + a2 * a4) + z32 * eccentricity_0.powi(2)) * 2.0 + p0 * z32;
+    // Zₓ₂ = 2 (6 (aₓ₁ aₓ₃ + aₓ₂ aₓ₄) + Zₓ₃₂ e₀²) + p₁ Zₓ₃₂
+    let zx2 = (6.0 * (ax1 * ax3 + ax2 * ax4) + zx32 * eccentricity_0.powi(2)) * 2.0 + p1 * zx32;
 
-    // Z₃ = 2 (3 (a₃² + a₄²) + Z₃₃ e₀²) + p₀ Z₃₃
-    let z3 = (3.0 * (a3.powi(2) + a4.powi(2)) + z33 * eccentricity_0.powi(2)) * 2.0 + p0 * z33;
+    // Zₓ₃ = 2 (3 (aₓ₃² + aₓ₄²) + Zₓ₃₃ e₀²) + p₁ Zₓ₃₃
+    let zx3 = (3.0 * (ax3.powi(2) + ax4.powi(2)) + zx33 * eccentricity_0.powi(2)) * 2.0 + p1 * zx33;
 
-    // lₓ₀ = Cₓ / n₀"
-    let lx0 = third_body_perturbation_coefficient / n0;
+    // pₓ₀ = Cₓ / n₀"
+    let px0 = third_body_perturbation_coefficient / n0;
 
-    //         1 lₓ₀
-    // lₓ₁ = - - ---
+    //         1 pₓ₀
+    // pₓ₁ = - - ---
     //         2 β₀
-    let lx1 = -0.5 * lx0 / b0;
+    let px1 = -0.5 * px0 / b0;
 
-    // lₓ₂ = lₓ₀ β₀
-    let lx2 = lx0 * b0;
+    // pₓ₂ = pₓ₀ β₀
+    let px2 = px0 * b0;
 
-    // lₓ₃ = -15 e₀ lₓ₂
-    let lx3 = -15.0 * eccentricity_0 * lx2;
+    // pₓ₃ = - 15 e₀ pₓ₂
+    let px3 = -15.0 * eccentricity_0 * px2;
 
-    // Ω̇ₓ = │ 0                             if i₀ < 5.2359877 × 10⁻²
-    //      │                               or i₀ > π - 5.2359877 × 10⁻²
-    //      │ - nₓ lₓ₁ (Z₂₁ + Z₂₃) / sin i₀ otherwise
+    // Ω̇ₓ = │ 0                               if I₀ < 5.2359877 × 10⁻²
+    //      │                                 or I₀ > π - 5.2359877 × 10⁻²
+    //      │ - nₓ pₓ₁ (Zₓ₂₁ + Zₓ₂₃) / sin I₀ otherwise
     let third_body_right_ascension_dot =
         if inclination_0 < 5.2359877e-2 || inclination_0 > model::PI - 5.2359877e-2 {
             0.0
         } else {
-            -third_body_mean_motion * lx1 * (z21 + z23) / inclination_0.sin()
+            -third_body_mean_motion * px1 * (zx21 + zx23) / inclination_0.sin()
         };
     (
         Perturbations {
-            // kₓ₀ = 2 lₓ₃ (X₂ X₃ + X₁ X₄)
-            kx0: 2.0 * lx3 * (x2 * x3 + x1 * x4),
+            // kₓ₀ = 2 pₓ₃ (Xₓ₂ Xₓ₃ + Xₓ₁ Xₓ₄)
+            kx0: 2.0 * px3 * (xx2 * xx3 + xx1 * xx4),
 
-            // kₓ₁ = 2 lₓ₃ (X₂ X₄ - X₁ X₃)
-            kx1: 2.0 * lx3 * (x2 * x4 - x1 * x3),
+            // kₓ₁ = 2 pₓ₃ (Xₓ₂ Xₓ₄ - Xₓ₁ Xₓ₃)
+            kx1: 2.0 * px3 * (xx2 * xx4 - xx1 * xx3),
 
-            // kₓ₂ = 2 lₓ₁ Z₁₂
-            kx2: 2.0 * lx1 * z12,
+            // kₓ₂ = 2 pₓ₁ Zₓ₁₂
+            kx2: 2.0 * px1 * zx12,
 
-            // kₓ₃ = 2 lₓ₁ (Z₁₃ - Z₁₁)
-            kx3: 2.0 * lx1 * (z13 - z11),
+            // kₓ₃ = 2 pₓ₁ (Zₓ₁₃ - Zₓ₁₁)
+            kx3: 2.0 * px1 * (zx13 - zx11),
 
-            // kₓ₄ = -2 lₓ₀ Z₂
-            kx4: -2.0 * lx0 * z2,
+            // kₓ₄ = - 2 pₓ₀ Zₓ₂
+            kx4: -2.0 * px0 * zx2,
 
-            // kₓ₅ = - 2 lₓ₀ (Z₃ - Z₁)
-            kx5: -2.0 * lx0 * (z3 - z1),
+            // kₓ₅ = - 2 pₓ₀ (Zₓ₃ - Zₓ₁)
+            kx5: -2.0 * px0 * (zx3 - zx1),
 
-            // kₓ₆ = - 2 lₓ₀ (- 21 - 9 e₀²) eₓ
-            kx6: -2.0 * lx0 * (-21.0 - 9.0 * eccentricity_0.powi(2)) * third_body_eccentricity_0,
+            // kₓ₆ = - 2 pₓ₀ (- 21 - 9 e₀²) eₓ
+            kx6: -2.0 * px0 * (-21.0 - 9.0 * eccentricity_0.powi(2)) * third_body_eccentricity_0,
 
-            // kₓ₇ = 2 lₓ₂ Z₃₂
-            kx7: 2.0 * lx2 * z32,
+            // kₓ₇ = 2 pₓ₂ Zₓ₃₂
+            kx7: 2.0 * px2 * zx32,
 
-            // kₓ₈ = 2 lₓ₂ (Z₃₃ - Z₃₁)
-            kx8: 2.0 * lx2 * (z33 - z31),
+            // kₓ₈ = 2 pₓ₂ (Zₓ₃₃ - Zₓ₃₁)
+            kx8: 2.0 * px2 * (zx33 - zx31),
 
-            // kₓ₉ = - 18 lₓ₂ eₓ
-            kx9: -18.0 * lx2 * third_body_eccentricity_0,
+            // kₓ₉ = - 18 pₓ₂ eₓ
+            kx9: -18.0 * px2 * third_body_eccentricity_0,
 
-            // kₓ₁₀ = - 2 lₓ₁ Z₂₂
-            kx10: -2.0 * lx1 * z22,
+            // kₓ₁₀ = - 2 pₓ₁ Zₓ₂₂
+            kx10: -2.0 * px1 * zx22,
 
-            // kₓ₁₁ = - 2 lₓ₁ (Z₂₃ - Z₂₁)
-            kx11: -2.0 * lx1 * (z23 - z21),
+            // kₓ₁₁ = - 2 pₓ₁ (Zₓ₂₃ - Zₓ₂₁)
+            kx11: -2.0 * px1 * (zx23 - zx21),
             third_body_mean_anomaly_0: third_body_mean_anomaly_0,
         },
         Dots {
-            // İₓ = lₓ₁ nₓ (Z₁₁ + Z₁₃)
-            inclination: lx1 * third_body_mean_motion * (z11 + z13),
+            // İₓ = pₓ₁ nₓ (Zₓ₁₁ + Zₓ₁₃)
+            inclination: px1 * third_body_mean_motion * (zx11 + zx13),
             right_ascension: third_body_right_ascension_dot,
 
-            // ėₓ = lₓ₃ nₓ (X₁ X₃ + X₂ X₄)
-            eccentricity: lx3 * third_body_mean_motion * (x1 * x3 + x2 * x4),
+            // ėₓ = pₓ₃ nₓ (Xₓ₁ Xₓ₃ + Xₓ₂ Xₓ₄)
+            eccentricity: px3 * third_body_mean_motion * (xx1 * xx3 + xx2 * xx4),
 
-            // ω̇ₓ = lₓ₂ nₓ (Z₃₁ + Z₃₃ - 6) - cos i₀ Ω̇ₓ
-            argument_of_perigee: lx2 * third_body_mean_motion * (z31 + z33 - 6.0)
+            // ω̇ₓ = pₓ₂ nₓ (Zₓ₃₁ + Zₓ₃₃ - 6) - cos I₀ Ω̇ₓ
+            argument_of_perigee: px2 * third_body_mean_motion * (zx31 + zx33 - 6.0)
                 - inclination_0.cos() * third_body_right_ascension_dot,
 
-            // Ṁₓ = - nₓ lₓ₀ (Z₁ + Z₃ - 14 - 6 e₀²)
+            // Ṁₓ = - nₓ pₓ₀ (Zₓ₁ + Zₓ₃ - 14 - 6 e₀²)
             mean_anomaly: -third_body_mean_motion
-                * lx0
-                * (z1 + z3 - 14.0 - 6.0 * eccentricity_0.powi(2)),
+                * px0
+                * (zx1 + zx3 - 14.0 - 6.0 * eccentricity_0.powi(2)),
         },
     )
 }
@@ -262,22 +263,22 @@ impl Perturbations {
         let fx = third_body_mean_anomaly
             + 2.0 * third_body_eccentricity_0 * third_body_mean_anomaly.sin();
 
-        // f₂ = ¹/₂ sin²fₓ - ¹/₄
-        let f2 = 0.5 * fx.sin().powi(2) - 0.25;
+        // fₓ₂ = ¹/₂ sin²fₓ - ¹/₄
+        let fx2 = 0.5 * fx.sin().powi(2) - 0.25;
 
-        // f₃ = - ¹/₂ sin fₓ cos fₓ
-        let f3 = -0.5 * fx.sin() * fx.cos();
+        // fₓ₃ = - ¹/₂ sin fₓ cos fₓ
+        let fx3 = -0.5 * fx.sin() * fx.cos();
         (
-            // δeₓ = kₓ₀ f₂ + kₓ₁ f₃
-            self.kx0 * f2 + self.kx1 * f3,
-            // δIₓ = kₓ₂ f₂ + kₓ₃ f₃
-            self.kx2 * f2 + self.kx3 * f3,
-            // δMₓ = kₓ₄ f₂ + kₓ₅ f₃ + kₓ₆ sin fₓ
-            self.kx4 * f2 + self.kx5 * f3 + self.kx6 * fx.sin(),
-            // lₓ₄ = kₓ₇ f₂ + kₓ₈ f₃ + kₓ₉ sin fₓ
-            self.kx7 * f2 + self.kx8 * f3 + self.kx9 * fx.sin(),
-            // lₓ₅ = kₓ₁₀ f₂ + kₓ₁₁ f₃
-            self.kx10 * f2 + self.kx11 * f3,
+            // δeₓ = kₓ₀ fₓ₂ + kₓ₁ fₓ₃
+            self.kx0 * fx2 + self.kx1 * fx3,
+            // δIₓ = kₓ₂ fₓ₂ + kₓ₃ fₓ₃
+            self.kx2 * fx2 + self.kx3 * fx3,
+            // δMₓ = kₓ₄ fₓ₂ + kₓ₅ fₓ₃ + kₓ₆ sin fₓ
+            self.kx4 * fx2 + self.kx5 * fx3 + self.kx6 * fx.sin(),
+            // pₓ₄ = kₓ₇ fₓ₂ + kₓ₈ fₓ₃ + kₓ₉ sin fₓ
+            self.kx7 * fx2 + self.kx8 * fx3 + self.kx9 * fx.sin(),
+            // pₓ₅ = kₓ₁₀ fₓ₂ + kₓ₁₁ fₓ₃
+            self.kx10 * fx2 + self.kx11 * fx3,
         )
     }
 }
