@@ -692,4 +692,4 @@ p₂₈ = tan⁻¹ -------------------------------------------------------------
 
 <a id="2">[2]</a> F. R. Hoots, P. W. Schumacher Jr.  & R. A. Glover, "History of Analytical Orbit Modeling in the U. S. Space Surveillance System", Journal of Guidance, Control, and Dynamics, 27(2), 174–185, https://doi.org/10.2514/1.9161/
 
-<a id="3">[3]</a> R. S. Hujsak, "A Restricted Four Body Solution for Resonating Satel- lites Without Drag", Project SPACETRACK, Rept. 1, U.S. Air Force Aerospace Defense Command, Colorado Springs, CO, Nov. 1979, https://doi.org/10.21236/ada081263/
+<a id="3">[3]</a> R. S. Hujsak, "A Restricted Four Body Solution for Resonating Satellites Without Drag", Project SPACETRACK, Rept. 1, U.S. Air Force Aerospace Defense Command, Colorado Springs, CO, Nov. 1979, https://doi.org/10.21236/ada081263/
