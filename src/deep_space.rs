@@ -58,7 +58,6 @@ pub fn constants<'a>(
     geopotential: &'a model::Geopotential,
     epoch_to_sidereal_time: impl Fn(f64) -> f64,
     t0: f64,
-    drag_term: f64,
     orbit_0: propagator::Orbit,
     p1: f64,
     a0: f64,
@@ -152,7 +151,6 @@ pub fn constants<'a>(
     );
     propagator::Constants {
         geopotential: geopotential,
-        drag_term: drag_term,
 
         // Ω̇ = p₁₃ + (Ω̇ₛ + Ω̇ₗ)
         right_ascension_dot: p13 + (solar_dots.right_ascension + lunar_dots.right_ascension),
@@ -723,8 +721,8 @@ impl<'a> propagator::Constants<'a> {
             )
         };
 
-        // p₂₉ = e₀ + ė t - B* C₄ t
-        let p29 = self.orbit_0.eccentricity + eccentricity_dot * t - self.drag_term * self.c4 * t;
+        // p₂₉ = e₀ + ė t - C₄ t
+        let p29 = self.orbit_0.eccentricity + eccentricity_dot * t - self.c4 * t;
         if p29 >= 1.0 || p29 < -0.001 {
             Err(propagator::Error::new("diverging eccentricity"))
         } else {

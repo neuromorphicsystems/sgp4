@@ -180,12 +180,12 @@ impl<'a> Constants<'a> {
                 + 0.5 * p10 * b0 * k6
                 + 0.0625 * p11 * b0 * (13.0 - 78.0 * p1.powi(2) + 137.0 * p1.powi(4));
 
-            // C₄ = 2 n₀" p₈ a₀" p₂ (
+            // C₄ = 2 B* n₀" p₈ a₀" p₂ (
             //      η (2 + ¹/₂ η²)
             //      + e₀ (¹/₂ + 2 η²)
             //      - J₂ ξ / (a p₇) (-3 k₆ (1 - 2 e₀ η + η² (³/₂ - ¹/₂ e₀ η))
             //      + ³/₄ (1 - p₁²) (2 η² - e₀ η (1 + η²)) cos 2 ω₀)
-            let c4 = 2.0
+            let c4 = drag_term * (2.0
                 * orbit_0.mean_motion
                 * p8
                 * a0
@@ -201,7 +201,7 @@ impl<'a> Constants<'a> {
                                 * (1.0 - p1.powi(2))
                                 * (2.0 * eta.powi(2)
                                     - orbit_0.eccentricity * eta * (1.0 + eta.powi(2)))
-                                * (2.0 * orbit_0.argument_of_perigee).cos()));
+                                * (2.0 * orbit_0.argument_of_perigee).cos())));
 
             // k₀ = - ⁷/₂ p₂ p₁₀ p₁ C₁
             let k0 = 3.5 * p2 * (-p10 * p1) * c1;
@@ -237,7 +237,6 @@ impl<'a> Constants<'a> {
                     geopotential,
                     epoch_to_sidereal_time,
                     t0,
-                    drag_term,
                     orbit_0,
                     p1,
                     a0,

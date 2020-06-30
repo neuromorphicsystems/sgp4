@@ -20,10 +20,11 @@ The following table lists all the variables used in the code and their associate
 
 | variable | symbol | description |
 |:--------:|:------:|:-----------:|
+C4: pre-multiplied B* (compared to Hoots)
+
 
 ### Mathematical expressions
 
-List of expressions:
 1. [Common initialization](#common-initialization)
 2. [Near earth initialization](#near-earth-initialization)
 3. [High altitude near earth initialization](#high-altitude-near-earth-initialization)
@@ -106,7 +107,7 @@ k₁₄ = - ¹/₂ p₁₀ (1 - 5 p₁²) + ¹/₁₆ p₁₁ (7 - 114 p₁² + 
 
 p₁₄ = n₀" + ¹/₂ p₁₀ β₀ k₆ + ¹/₁₆ p₁₁ β₀ (13 - 78 p₁² + 137 p₁⁴)
 
-C₄ = 2 n₀" p₈ a₀" p₂ (
+C₄ = 2 B* n₀" p₈ a₀" p₂ (
      η (2 + ¹/₂ η²)
      + e₀ (¹/₂ + 2 η²)
      - J₂ ξ / (a p₇) (-3 k₆ (1 - 2 e₀ η + η² (³/₂ - ¹/₂ e₀ η))
@@ -156,7 +157,7 @@ D₃ = (17 a + s) p₁₅
 
 D₄ = ¹/₂ p₁₅ a₀" ξ (221 a₀" + 31 s) C₁
 
-C₅ = 2 p₈ a₀" p₂ (1 + 2.75 (η² + η e₀) + e₀ η³)
+C₅ = 2 B* p₈ a₀" p₂ (1 + 2.75 (η² + η e₀) + e₀ η³)
 
 k₇ = (1 + η cos M₀)³
 
@@ -597,8 +598,8 @@ Defined only if `n₀" > 2π / 255` (near earth).
 ```
 p₂₃ = M₀ + Ṁ t
 
-p₂₅ = | e₀ - (B* C₄ t + B* C₅ (sin M - k₈)) if high altitude
-      | e₀ - B* C₄ t                        otherwise
+p₂₅ = | e₀ - (C₄ t + C₅ (sin M - k₈)) if high altitude
+      | e₀ - C₄ t                     otherwise
 ```
 
 #### High altitude near earth propagation
@@ -621,7 +622,7 @@ j is │ the largest positive integer | tⱼ ≤ t  if t > 0
      │ the smallest negative integer | tⱼ ≥ t if t < 0
      │ 0                                      otherwise
 
-p₂₉ = e₀ + ė t - B* C₄ t
+p₂₉ = e₀ + ė t - C₄ t
 ```
 
 #### Third body propagation

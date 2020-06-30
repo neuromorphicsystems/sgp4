@@ -25,7 +25,6 @@ pub fn constants<'a>(
 ) -> propagator::Constants<'a> {
     propagator::Constants {
         geopotential: geopotential,
-        drag_term: drag_term,
 
         // Ω̇ = p₁₃
         right_ascension_dot: p13,
@@ -91,14 +90,14 @@ pub fn constants<'a>(
                 let d4 = 0.5 * p15 * a0 * xi * (221.0 * a0 + 31.0 * s) * c1;
 
                 propagator::HighAltitude::Yes {
-                    // C₅ = 2 p₈ a₀" p₂ (1 + 2.75 (η² + η e₀) + e₀ η³)
-                    c5: 2.0
+                    // C₅ = 2 B* p₈ a₀" p₂ (1 + 2.75 (η² + η e₀) + e₀ η³)
+                    c5: drag_term * (2.0
                         * p8
                         * a0
                         * p2
                         * (1.0
                             + 2.75 * (eta.powi(2) + eta * orbit_0.eccentricity)
-                            + eta * orbit_0.eccentricity * eta.powi(2)),
+                            + eta * orbit_0.eccentricity * eta.powi(2))),
                     d2: d2,
                     d3: d3,
                     d4: d4,
@@ -179,8 +178,8 @@ impl<'a> propagator::Constants<'a> {
                 a0 * (1.0 - self.c1 * t).powi(2),
                 // 𝕃 = p₂₃ + n₀" k₁ t²
                 p23 + self.orbit_0.mean_motion * self.k1 * t.powi(2),
-                // p₂₅ = e₀ - B* C₄ t
-                self.orbit_0.eccentricity - self.drag_term * self.c4 * t,
+                // p₂₅ = e₀ - C₄ t
+                self.orbit_0.eccentricity - self.c4 * t,
             ),
             propagator::HighAltitude::Yes {
                 c5,
@@ -217,10 +216,10 @@ impl<'a> propagator::Constants<'a> {
                     mean_anomaly
                         + self.orbit_0.mean_motion
                             * (self.k1 * t.powi(2) + k9 * t.powi(3) + t.powi(4) * (k10 + t * k11)),
-                    // p₂₅ = e₀ - (B* C₄ t + B* C₅ (sin M - k₈))
+                    // p₂₅ = e₀ - (C₄ t + C₅ (sin M - k₈))
                     self.orbit_0.eccentricity
-                        - (self.drag_term * self.c4 * t
-                            + self.drag_term * c5 * (mean_anomaly.sin() - k8)),
+                        - (self.c4 * t
+                            + c5 * (mean_anomaly.sin() - k8)),
                 )
             }
         };

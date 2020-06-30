@@ -121,7 +121,6 @@ pub struct Orbit {
 
 pub struct Constants<'a> {
     pub geopotential: &'a model::Geopotential,
-    pub drag_term: f64,
     pub right_ascension_dot: f64,
     pub argument_of_perigee_dot: f64,
     pub mean_anomaly_dot: f64,
