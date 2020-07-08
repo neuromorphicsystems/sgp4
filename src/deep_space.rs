@@ -57,7 +57,7 @@ pub struct ResonanceState {
 pub fn constants<'a>(
     geopotential: &'a model::Geopotential,
     epoch_to_sidereal_time: impl Fn(f64) -> f64,
-    t0: f64,
+    epoch: f64,
     orbit_0: propagator::Orbit,
     p1: f64,
     a0: f64,
@@ -68,11 +68,11 @@ pub fn constants<'a>(
     k1: f64,
     k14: f64,
     p2: f64,
-    p13: f64,
     p14: f64,
+    p15: f64,
 ) -> propagator::Constants<'a> {
-    // t₁₉₀₀ = 365.25 (t₀ + 100)
-    let t1900 = (t0 + 100.0) * 365.25;
+    // d₁₉₀₀ = 365.25 (y₂₀₀₀ + 100)
+    let d1900 = (epoch + 100.0) * 365.25;
     let (solar_perturbations, solar_dots) = third_body::perturbations_and_dots(
         orbit_0.inclination,
         orbit_0.eccentricity,
@@ -93,14 +93,14 @@ pub fn constants<'a>(
         0.1945905,
         SOLAR_PERTURBATION_COEFFICIENT,
         SOLAR_MEAN_MOTION,
-        // Mₛ₀ = (6.2565837 + 0.017201977 t₁₉₀₀) rem 2π
-        (6.2565837 + 0.017201977 * t1900) % (2.0 * model::PI),
+        // Mₛ₀ = (6.2565837 + 0.017201977 d₁₉₀₀) rem 2π
+        (6.2565837 + 0.017201977 * d1900) % (2.0 * model::PI),
         p2,
         b0,
     );
 
-    // Ωₗₑ = 4.523602 - 9.2422029 × 10⁻⁴ t₁₉₀₀ rem 2π
-    let lunar_right_ascension_epsilon = (4.5236020 - 9.2422029e-4 * t1900) % (2.0 * model::PI);
+    // Ωₗₑ = 4.523602 - 9.2422029 × 10⁻⁴ d₁₉₀₀ rem 2π
+    let lunar_right_ascension_epsilon = (4.5236020 - 9.2422029e-4 * d1900) % (2.0 * model::PI);
 
     // cos Iₗ = 0.91375164 - 0.03568096 Ωₗₑ
     let lunar_inclination_cosine = 0.91375164 - 0.03568096 * lunar_right_ascension_epsilon.cos();
@@ -115,12 +115,12 @@ pub fn constants<'a>(
     // cos Ωₗ = (1 - sin²Ωₗ)¹ᐟ²
     let lunar_right_ascension_cosine = (1.0 - lunar_right_ascension_sine.powi(2)).sqrt();
 
-    // ωₗ = 5.8351514 + 0.001944368 t₁₉₀₀
+    // ωₗ = 5.8351514 + 0.001944368 d₁₉₀₀
     //                     0.39785416 sin Ωₗₑ / sin Iₗ
     //      + tan⁻¹ ------------------------------------------ - Ωₗₑ
     //              cos Ωₗ cos Ωₗₑ + 0.91744867 sin Ωₗ sin Ωₗₑ
     let lunar_argument_of_perigee = 5.8351514
-        + 0.001944368 * t1900
+        + 0.001944368 * d1900
         + (0.39785416 * lunar_right_ascension_epsilon.sin() / lunar_inclination_sine).atan2(
             lunar_right_ascension_cosine * lunar_right_ascension_epsilon.cos()
                 + 0.91744867 * lunar_right_ascension_sine * lunar_right_ascension_epsilon.sin(),
@@ -144,23 +144,23 @@ pub fn constants<'a>(
         lunar_argument_of_perigee.cos(),
         LUNAR_PERTURBATION_COEFFICIENT,
         LUNAR_MEAN_MOTION,
-        // Mₗ₀ = (-1.1151842 + 0.228027132 t₁₉₀₀) rem 2π
-        (-1.1151842 + 0.228027132 * t1900) % (2.0 * model::PI),
+        // Mₗ₀ = (-1.1151842 + 0.228027132 d₁₉₀₀) rem 2π
+        (-1.1151842 + 0.228027132 * d1900) % (2.0 * model::PI),
         p2,
         b0,
     );
     propagator::Constants {
         geopotential: geopotential,
 
-        // Ω̇ = p₁₃ + (Ω̇ₛ + Ω̇ₗ)
-        right_ascension_dot: p13 + (solar_dots.right_ascension + lunar_dots.right_ascension),
+        // Ω̇ = p₁₄ + (Ω̇ₛ + Ω̇ₗ)
+        right_ascension_dot: p14 + (solar_dots.right_ascension + lunar_dots.right_ascension),
 
         // ω̇ = k₁₄ + (ω̇ₛ + ω̇ₗ)
         argument_of_perigee_dot: k14
             + (solar_dots.argument_of_perigee + lunar_dots.argument_of_perigee),
 
-        // Ṁ = p₁₄ + (Ṁₛ + Ṁₗ)
-        mean_anomaly_dot: p14 + (solar_dots.mean_anomaly + lunar_dots.mean_anomaly),
+        // Ṁ = p₁₅ + (Ṁₛ + Ṁₗ)
+        mean_anomaly_dot: p15 + (solar_dots.mean_anomaly + lunar_dots.mean_anomaly),
         c1: c1,
         c4: c4,
         k0: k0,
@@ -175,7 +175,7 @@ pub fn constants<'a>(
                     && orbit_0.mean_motion <= 9.24e-3
                     && orbit_0.eccentricity >= 0.5)
             {
-                let sidereal_time_0 = epoch_to_sidereal_time(t0);
+                let sidereal_time_0 = epoch_to_sidereal_time(epoch);
                 if orbit_0.mean_motion < 0.0052359877 && orbit_0.mean_motion > 0.0034906585 {
                     propagator::Resonant::Yes {
                         // λ₀ = M₀ + Ω₀ + ω₀ − θ₀ rem 2π
@@ -185,20 +185,20 @@ pub fn constants<'a>(
                             - sidereal_time_0)
                             % (2.0 * model::PI),
 
-                        // λ̇₀ = p₁₄ + (k₁₄ + p₁₃) − θ̇ + (Ṁₛ + Ṁₗ) + (ω̇ₛ + ω̇ₗ) + (Ω̇ₛ + Ω̇ₗ) - n₀"
-                        lambda_dot_0: p14 + (k14 + p13) - model::SIDEREAL_SPEED
+                        // λ̇₀ = p₁₅ + (k₁₄ + p₁₄) − θ̇ + (Ṁₛ + Ṁₗ) + (ω̇ₛ + ω̇ₗ) + (Ω̇ₛ + Ω̇ₗ) - n₀"
+                        lambda_dot_0: p15 + (k14 + p14) - model::SIDEREAL_SPEED
                             + (solar_dots.mean_anomaly + lunar_dots.mean_anomaly)
                             + (solar_dots.argument_of_perigee + lunar_dots.argument_of_perigee)
                             + (solar_dots.right_ascension + lunar_dots.right_ascension)
                             - orbit_0.mean_motion,
                         sidereal_time_0: sidereal_time_0,
                         resonance: {
-                            // p₁₆ = 3 (n / a₀")²
-                            let p16 = 3.0 * (orbit_0.mean_motion / a0).powi(2);
+                            // p₁₇ = 3 (n / a₀")²
+                            let p17 = 3.0 * (orbit_0.mean_motion / a0).powi(2);
                             propagator::Resonance::OneDay {
-                                // 𝛿ᵣ₁ = p₁₆ (¹⁵/₁₆ sin²I₀ (1 + 3 p₁) - ³/₄ (1 + p₁))
+                                // 𝛿ᵣ₁ = p₁₇ (¹⁵/₁₆ sin²I₀ (1 + 3 p₁) - ³/₄ (1 + p₁))
                                 //           (1 + 2 e₀²) 2.1460748 × 10⁻⁶ / a₀"²
-                                dr1: p16
+                                dr1: p17
                                     * (0.9375
                                         * orbit_0.inclination.sin().powi(2)
                                         * (1.0 + 3.0 * p1)
@@ -207,20 +207,20 @@ pub fn constants<'a>(
                                     * 2.1460748e-6
                                     / a0,
 
-                                // 𝛿ᵣ₂ = 2 p₁₆ (³/₄ (1 + p₁)²)
+                                // 𝛿ᵣ₂ = 2 p₁₇ (³/₄ (1 + p₁)²)
                                 //      (1 + e₀² (- ⁵/₂ + ¹³/₁₆ e₀²)) 1.7891679 × 10⁻⁶
                                 dr2: 2.0
-                                    * p16
+                                    * p17
                                     * (0.75 * (1.0 + p1).powi(2))
                                     * (1.0
                                         + orbit_0.eccentricity.powi(2)
                                             * (-2.5 + 0.8125 * orbit_0.eccentricity.powi(2)))
                                     * 1.7891679e-6,
 
-                                // 𝛿ᵣ₃ = 3 p₁₆ (¹⁵/₈ (1 + p₁)³) (1 + e₀² (- 6 + 6.60937 e₀²))
+                                // 𝛿ᵣ₃ = 3 p₁₇ (¹⁵/₈ (1 + p₁)³) (1 + e₀² (- 6 + 6.60937 e₀²))
                                 //       2.2123015 × 10⁻⁷ / a₀"²
                                 dr3: 3.0
-                                    * p16
+                                    * p17
                                     * (1.875 * (1.0 + p1).powi(3))
                                     * (1.0
                                         + orbit_0.eccentricity.powi(2)
@@ -240,26 +240,26 @@ pub fn constants<'a>(
                             - sidereal_time_0)
                             % (2.0 * model::PI),
 
-                        // λ̇₀ = p₁₄ + (Ṁₛ + Ṁₗ) + 2 (p₁₃ + (Ω̇ₛ + Ω̇ₗ) - θ̇) - n₀"
-                        lambda_dot_0: p14
+                        // λ̇₀ = p₁₅ + (Ṁₛ + Ṁₗ) + 2 (p₁₄ + (Ω̇ₛ + Ω̇ₗ) - θ̇) - n₀"
+                        lambda_dot_0: p15
                             + (solar_dots.mean_anomaly + lunar_dots.mean_anomaly)
                             + 2.0
-                                * (p13 + (solar_dots.right_ascension + lunar_dots.right_ascension)
+                                * (p14 + (solar_dots.right_ascension + lunar_dots.right_ascension)
                                     - model::SIDEREAL_SPEED)
                             - orbit_0.mean_motion,
                         sidereal_time_0: sidereal_time_0,
                         resonance: {
-                            // p₁₇ = 3 n₀"² / a₀"²
-                            let p17 = 3.0 * orbit_0.mean_motion.powi(2) * (1.0 / a0).powi(2);
-
-                            // p₁₈ = p₁₇ / a₀"
-                            let p18 = p17 * (1.0 / a0);
+                            // p₁₈ = 3 n₀"² / a₀"²
+                            let p18 = 3.0 * orbit_0.mean_motion.powi(2) * (1.0 / a0).powi(2);
 
                             // p₁₉ = p₁₈ / a₀"
                             let p19 = p18 * (1.0 / a0);
 
                             // p₂₀ = p₁₉ / a₀"
                             let p20 = p19 * (1.0 / a0);
+
+                            // p₂₁ = p₂₀ / a₀"
+                            let p21 = p20 * (1.0 / a0);
 
                             // F₂₂₀ = ³/₄ (1 + 2 p₁ + p₁²)
                             let f220 = 0.75 * (1.0 + 2.0 * p1 + p1.powi(2));
@@ -360,52 +360,52 @@ pub fn constants<'a>(
                             };
 
                             propagator::Resonance::HalfDay {
-                                // D₂₂₀₋₁ = p₁₇ 1.7891679 × 10⁻⁶ F₂₂₀ (- 0.306 - 0.44 (e₀ - 0.64))
-                                d2201: p17
+                                // D₂₂₀₋₁ = p₁₈ 1.7891679 × 10⁻⁶ F₂₂₀ (- 0.306 - 0.44 (e₀ - 0.64))
+                                d2201: p18
                                     * 1.7891679e-6
                                     * f220
                                     * (-0.306 - (orbit_0.eccentricity - 0.64) * 0.44),
 
-                                // D₂₂₁₁ = p₁₇ 1.7891679 × 10⁻⁶ (³/₂ sin²I₀) G₂₁₁
-                                d2211: p17
+                                // D₂₂₁₁ = p₁₈ 1.7891679 × 10⁻⁶ (³/₂ sin²I₀) G₂₁₁
+                                d2211: p18
                                     * 1.7891679e-6
                                     * (1.5 * orbit_0.inclination.sin().powi(2))
                                     * g211,
 
-                                // D₃₂₁₀ = p₁₈ 3.7393792 × 10⁻⁷ (¹⁵/₈ sin I₀ (1 - 2 p₁ - 3 p₁²)) G₃₁₀
-                                d3210: p18
+                                // D₃₂₁₀ = p₁₉ 3.7393792 × 10⁻⁷ (¹⁵/₈ sin I₀ (1 - 2 p₁ - 3 p₁²)) G₃₁₀
+                                d3210: p19
                                     * 3.7393792e-7
                                     * (1.875
                                         * orbit_0.inclination.sin()
                                         * (1.0 - 2.0 * p1 - 3.0 * p1.powi(2)))
                                     * g310,
 
-                                // D₃₂₂₂ = p₁₈ 3.7393792 × 10⁻⁷ (- ¹⁵/₈ sin I₀ (1 + 2 p₁ - 3 p₁²)) G₃₂₂
-                                d3222: p18
+                                // D₃₂₂₂ = p₁₉ 3.7393792 × 10⁻⁷ (- ¹⁵/₈ sin I₀ (1 + 2 p₁ - 3 p₁²)) G₃₂₂
+                                d3222: p19
                                     * 3.7393792e-7
                                     * (-1.875
                                         * orbit_0.inclination.sin()
                                         * (1.0 + 2.0 * p1 - 3.0 * p1.powi(2)))
                                     * g322,
 
-                                // D₄₄₁₀ = 2 p₁₉ 7.3636953 × 10⁻⁹ (35 sin²I₀ F₂₂₀) G₄₁₀
+                                // D₄₄₁₀ = 2 p₂₀ 7.3636953 × 10⁻⁹ (35 sin²I₀ F₂₂₀) G₄₁₀
                                 d4410: 2.0
-                                    * p19
+                                    * p20
                                     * 7.3636953e-9
                                     * (35.0 * orbit_0.inclination.sin().powi(2) * f220)
                                     * g410,
 
-                                // D₄₄₂₂ = 2 p₁₉ 7.3636953 × 10⁻⁹ (³¹⁵/₈ sin⁴I₀) G₄₂₂
+                                // D₄₄₂₂ = 2 p₂₀ 7.3636953 × 10⁻⁹ (³¹⁵/₈ sin⁴I₀) G₄₂₂
                                 d4422: 2.0
-                                    * p19
+                                    * p20
                                     * 7.3636953e-9
                                     * (39.375 * orbit_0.inclination.sin().powi(4))
                                     * g422,
 
-                                // D₅₂₂₀ = p₂₀ 1.1428639 × 10⁻⁷ (³¹⁵/₃₂ sin I₀
+                                // D₅₂₂₀ = p₂₁ 1.1428639 × 10⁻⁷ (³¹⁵/₃₂ sin I₀
                                 //         (sin²I₀ (1 - 2 p₁ - 5 p₁²)
                                 //         + 0.33333333 (- 2 + 4 p₁ + 6 p₁²))) G₅₂₀
-                                d5220: p20
+                                d5220: p21
                                     * 1.1428639e-7
                                     * (9.84375
                                         * orbit_0.inclination.sin()
@@ -414,10 +414,10 @@ pub fn constants<'a>(
                                             + 0.33333333 * (-2.0 + 4.0 * p1 + 6.0 * p1.powi(2))))
                                     * g520,
 
-                                // D₅₂₃₂ = p₂₀ 1.1428639 × 10⁻⁷ (sin I₀
+                                // D₅₂₃₂ = p₂₁ 1.1428639 × 10⁻⁷ (sin I₀
                                 //         (4.92187512 sin²I₀ (- 2 - 4 p₁ + 10 p₁²)
                                 //         + 6.56250012 (1 + p₁ - 3 p₁²))) G₅₃₂
-                                d5232: p20
+                                d5232: p21
                                     * 1.1428639e-7
                                     * (orbit_0.inclination.sin()
                                         * (4.92187512
@@ -426,10 +426,10 @@ pub fn constants<'a>(
                                             + 6.56250012 * (1.0 + 2.0 * p1 - 3.0 * p1.powi(2))))
                                     * g532,
 
-                                // D₅₄₂₁ = 2 p₂₀ 2.1765803 × 10⁻⁹ (⁹⁴⁵/₃₂ sin I₀
+                                // D₅₄₂₁ = 2 p₂₁ 2.1765803 × 10⁻⁹ (⁹⁴⁵/₃₂ sin I₀
                                 //         (2 - 8 p₁ + p₁² (- 12 + 8 p₁ + 10 p₁²))) G₅₂₁
                                 d5421: 2.0
-                                    * p20
+                                    * p21
                                     * 2.1765803e-9
                                     * (29.53125
                                         * orbit_0.inclination.sin()
@@ -437,10 +437,10 @@ pub fn constants<'a>(
                                             + p1.powi(2) * (-12.0 + 8.0 * p1 + 10.0 * p1.powi(2))))
                                     * g521,
 
-                                // D₅₄₃₃ = 2 p₂₀ 2.1765803 × 10⁻⁹ (⁹⁴⁵/₃₂ sin I₀
+                                // D₅₄₃₃ = 2 p₂₁ 2.1765803 × 10⁻⁹ (⁹⁴⁵/₃₂ sin I₀
                                 //         (- 2 - 8 p₁ + p₁² (12 + 8 p₁ - 10 p₁²))) G₅₃₃
                                 d5433: 2.0
-                                    * p20
+                                    * p21
                                     * 2.1765803e-9
                                     * (29.53125
                                         * orbit_0.inclination.sin()
@@ -477,8 +477,8 @@ impl ResonanceState {
         resonance: &propagator::Resonance,
         sidereal_time_0: f64,
         t: f64,
-        p21: f64,
         p22: f64,
+        p23: f64,
     ) -> (f64, f64) {
         if (self.t != 0.0 && self.t.is_sign_positive() != t.is_sign_positive())
             || t.abs() < self.t.abs()
@@ -567,7 +567,7 @@ impl ResonanceState {
                 == ordering
             {
                 return (
-                    // p₂₆ = (kₑ / (nᵢ + ṅᵢ (t - tᵢ) + ¹/₂ n̈ᵢ (t - tᵢ)²))²ᐟ³
+                    // p₂₈ = (kₑ / (nᵢ + ṅᵢ (t - tᵢ) + ¹/₂ n̈ᵢ (t - tᵢ)²))²ᐟ³
                     (geopotential.ke
                         / (self.mean_motion
                             + ni_dot * (t - self.t)
@@ -575,20 +575,20 @@ impl ResonanceState {
                         .powf(2.0 / 3.0),
                     match resonance {
                         propagator::Resonance::OneDay { .. } => {
-                            // p₂₇ = λᵢ + λ̇ᵢ (t - tᵢ) + ¹/₂ ṅᵢ (t - tᵢ)² - p₂₁ - p₂₂ + θ
+                            // p₂₉ = λᵢ + λ̇ᵢ (t - tᵢ) + ¹/₂ ṅᵢ (t - tᵢ)² - p₂₂ - p₂₃ + θ
                             self.lambda
                                 + lambda_dot * (t - self.t)
                                 + ni_dot * (t - self.t).powi(2) * 0.5
-                                - p21
                                 - p22
+                                - p23
                                 + sidereal_time
                         }
                         propagator::Resonance::HalfDay { .. } => {
-                            // p₂₇ = λᵢ + λ̇ᵢ (t - tᵢ) + ¹/₂ ṅᵢ (t - tᵢ)² - 2 p₂₁ + 2 θ
+                            // p₂₉ = λᵢ + λ̇ᵢ (t - tᵢ) + ¹/₂ ṅᵢ (t - tᵢ)² - 2 p₂₂ + 2 θ
                             self.lambda
                                 + lambda_dot * (t - self.t)
                                 + ni_dot * (t - self.t).powi(2) * 0.5
-                                - 2.0 * p21
+                                - 2.0 * p22
                                 + 2.0 * sidereal_time
                         }
                     },
@@ -617,20 +617,20 @@ impl<'a> propagator::Constants<'a> {
         resonant: &propagator::Resonant,
         state: Option<&mut ResonanceState>,
         t: f64,
-        p21: f64,
         p22: f64,
+        p23: f64,
         afspc_compatibility_mode: bool,
-    ) -> propagator::Result<(propagator::Orbit, f64, f64, f64, f64, f64, f64, f64)> {
-        let (p26, p27) = match resonant {
+    ) -> propagator::Result<(propagator::Orbit, f64, f64, f64, f64, f64, f64)> {
+        let (p28, p29) = match resonant {
             propagator::Resonant::No { a0 } => {
                 assert!(
                     state.is_none(),
                     "state must be None with a non-resonant deep-space propagator",
                 );
                 (
-                    // p₂₆ = a₀"
+                    // p₂₈ = a₀"
                     *a0,
-                    // p₂₇ = M₀ + Ṁ t
+                    // p₂₉ = M₀ + Ṁ t
                     self.orbit_0.mean_anomaly + self.mean_anomaly_dot * t,
                 )
             }
@@ -647,8 +647,8 @@ impl<'a> propagator::Constants<'a> {
                     resonance,
                     *sidereal_time_0,
                     t,
-                    p21,
                     p22,
+                    p23,
                 ),
                 _ => panic!("state cannot be None with a deep space propagator"),
             },
@@ -672,95 +672,93 @@ impl<'a> propagator::Constants<'a> {
             + (solar_delta_inclination + lunar_delta_inclination);
         let (right_ascension, argument_of_perigee) = if inclination >= 0.2 {
             (
-                // Ω = p₂₁ + (pₛ₅ + pₗ₅) / sin I
-                p21 + (ps5 + pl5) / inclination.sin(),
-                // ω = p₂₂ + (pₛ₄ + pₗ₄) - cos I (pₛ₅ + pₗ₅) / sin I
-                p22 + (ps4 + pl4) - inclination.cos() * ((ps5 + pl5) / inclination.sin()),
+                // Ω = p₂₂ + (pₛ₅ + pₗ₅) / sin I
+                p22 + (ps5 + pl5) / inclination.sin(),
+                // ω = p₂₃ + (pₛ₄ + pₗ₄) - cos I (pₛ₅ + pₗ₅) / sin I
+                p23 + (ps4 + pl4) - inclination.cos() * ((ps5 + pl5) / inclination.sin()),
             )
         } else {
-            //             sin I sin p₂₁ + (pₛ₅ + pₗ₅) cos p₂₁ + (δIₛ + δIₗ) cos I sin p₂₁
-            // p₂₈ = tan⁻¹ -------------------------------------------------------------
-            //             sin I cos p₂₁ - (pₛ₅ + pₗ₅) sin p₂₁ + (δIₛ + δIₗ) cos I cos p₂₁
-            let p28 = (inclination.sin() * p21.sin()
-                + ((ps5 + pl5) * p21.cos()
+            //             sin I sin p₂₂ + (pₛ₅ + pₗ₅) cos p₂₂ + (δIₛ + δIₗ) cos I sin p₂₂
+            // p₃₀ = tan⁻¹ -------------------------------------------------------------
+            //             sin I cos p₂₂ - (pₛ₅ + pₗ₅) sin p₂₂ + (δIₛ + δIₗ) cos I cos p₂₂
+            let p30 = (inclination.sin() * p22.sin()
+                + ((ps5 + pl5) * p22.cos()
                     + (solar_delta_inclination + lunar_delta_inclination)
                         * inclination.cos()
-                        * p21.sin()))
+                        * p22.sin()))
             .atan2(
-                inclination.sin() * p21.cos()
-                    + (-(ps5 + pl5) * p21.sin()
+                inclination.sin() * p22.cos()
+                    + (-(ps5 + pl5) * p22.sin()
                         + (solar_delta_inclination + lunar_delta_inclination)
                             * inclination.cos()
-                            * p21.cos()),
+                            * p22.cos()),
             );
 
-            // Ω = │ p₂₈ + 2π if p₂₈ + π < p₂₁ rem 2π
-            //     │ p₂₈ - 2π if p₂₈ - π > p₂₁ rem 2π
-            //     │ p₂₈      otherwise
-            let right_ascension = if p28 < p21 % (2.0 * model::PI) - model::PI {
-                p28 + (2.0 * model::PI)
-            } else if p28 > p21 % (2.0 * model::PI) + model::PI {
-                p28 - (2.0 * model::PI)
+            // Ω = │ p₃₀ + 2π if p₃₀ + π < p₂₂ rem 2π
+            //     │ p₃₀ - 2π if p₃₀ - π > p₂₂ rem 2π
+            //     │ p₃₀      otherwise
+            let right_ascension = if p30 < p22 % (2.0 * model::PI) - model::PI {
+                p30 + (2.0 * model::PI)
+            } else if p30 > p22 % (2.0 * model::PI) + model::PI {
+                p30 - (2.0 * model::PI)
             } else {
-                p28
+                p30
             };
             (
                 right_ascension,
-                // ω = │ p₂₂ + (pₛ₄ + pₗ₄) + cos I ((p₂₁ rem 2π) - Ω)
-                //     │ - (δIₛ + δIₗ) (p₂₁ mod 2π) sin I             if AFSPC compatibility mode
-                // ω = │ p₂₂ + (pₛ₄ + pₗ₄) + cos I ((p₂₁ rem 2π) - Ω)
-                //     │ - (δIₛ + δIₗ) (p₂₁ rem 2π) sin I             otherwise
-                p22 + (ps4 + pl4) + inclination.cos() * (p21 % (2.0 * model::PI) - right_ascension)
+                // ω = │ p₂₃ + (pₛ₄ + pₗ₄) + cos I ((p₂₂ rem 2π) - Ω)
+                //     │ - (δIₛ + δIₗ) (p₂₂ mod 2π) sin I             if AFSPC compatibility mode
+                // ω = │ p₂₃ + (pₛ₄ + pₗ₄) + cos I ((p₂₂ rem 2π) - Ω)
+                //     │ - (δIₛ + δIₗ) (p₂₂ rem 2π) sin I             otherwise
+                p23 + (ps4 + pl4) + inclination.cos() * (p22 % (2.0 * model::PI) - right_ascension)
                     - (solar_delta_inclination + lunar_delta_inclination)
                         * if afspc_compatibility_mode {
-                            p21.rem_euclid(2.0 * model::PI)
+                            p22.rem_euclid(2.0 * model::PI)
                         } else {
-                            p21 % (2.0 * model::PI)
+                            p22 % (2.0 * model::PI)
                         }
                         * inclination.sin(),
             )
         };
 
-        // p₂₉ = e₀ + ė t - C₄ t
-        let p29 = self.orbit_0.eccentricity + eccentricity_dot * t - self.c4 * t;
-        if p29 >= 1.0 || p29 < -0.001 {
+        // p₃₁ = e₀ + ė t - C₄ t
+        let p31 = self.orbit_0.eccentricity + eccentricity_dot * t - self.c4 * t;
+        if p31 >= 1.0 || p31 < -0.001 {
             Err(propagator::Error::new("diverging eccentricity"))
         } else {
-            // e = │ 10⁻⁶ + (δeₛ + δeₗ) if p₂₉ < 10⁻⁶
-            //     │ p₂₉ + (δeₛ + δeₗ)  otherwise
+            // e = │ 10⁻⁶ + (δeₛ + δeₗ) if p₃₁ < 10⁻⁶
+            //     │ p₃₁ + (δeₛ + δeₗ)  otherwise
             let eccentricity =
-                (p29).max(1.0e-6) + (solar_delta_eccentricity + lunar_delta_eccentricity);
+                (p31).max(1.0e-6) + (solar_delta_eccentricity + lunar_delta_eccentricity);
             if eccentricity < 0.0 || eccentricity > 1.0 {
                 Err(propagator::Error::new("diverging perturbed eccentricity"))
             } else {
-                // M = p₂₇ + (δMₛ + δMₗ)
-                let mean_anomaly = p27 + (solar_delta_mean_motion + lunar_delta_mean_motion);
-
-                // a = p₂₆ (1 - C₁ t)²
-                let a = p26 * (1.0 - self.c1 * t).powi(2);
+                // a = p₂₈ (1 - C₁ t)²
+                let a = p28 * (1.0 - self.c1 * t).powi(2);
                 Ok((
                     propagator::Orbit {
                         inclination: inclination,
                         right_ascension: right_ascension,
                         eccentricity: eccentricity,
                         argument_of_perigee: argument_of_perigee,
-                        mean_anomaly: mean_anomaly,
+
+                        // M = p₂₉ + (δMₛ + δMₗ) + n₀" k₁ t²
+                        mean_anomaly: p29 + (solar_delta_mean_motion + lunar_delta_mean_motion) + self.orbit_0.mean_motion * self.k1 * t.powi(2),
+
                         // n = kₑ / a³ᐟ²
                         mean_motion: self.geopotential.ke / a.powf(1.5),
                     },
                     a,
-                    // 𝕃 = M + n₀" k₁ t²
-                    mean_anomaly + self.orbit_0.mean_motion * self.k1 * t.powi(2),
                     //         1 J₃
-                    // p₃₀ = - - -- sin I
+                    // p₃₂ = - - -- sin I
                     //         2 J₂
                     -0.5 * (self.geopotential.j3 / self.geopotential.j2) * inclination.sin(),
-                    // p₃₁ = 1 - cos²I
+                    // p₃₃ = 1 - cos²I
                     1.0 - inclination.cos().powi(2),
-                    // p₃₂ = 7 cos²I - 1
+                    // p₃₄ = 7 cos²I - 1
                     7.0 * inclination.cos().powi(2) - 1.0,
                     //       │   1 J₃       3 + 5 cos I
-                    // p₃₃ = │ - - -- sin I ----------- if |1 + cos I| > 1.5 × 10⁻¹²
+                    // p₃₅ = │ - - -- sin I ----------- if |1 + cos I| > 1.5 × 10⁻¹²
                     //       │   4 J₂        1 + cos I
                     //       │   1 J₃       3 + 5 cos I
                     //       │ - - -- sin I ----------- otherwise
@@ -778,7 +776,7 @@ impl<'a> propagator::Constants<'a> {
                             * (3.0 + 5.0 * inclination.cos())
                             / 1.5e-12
                     },
-                    // p₃₄ = 3 cos²I - 1
+                    // p₃₆ = 3 cos²I - 1
                     3.0 * inclination.cos().powi(2) - 1.0,
                 ))
             }

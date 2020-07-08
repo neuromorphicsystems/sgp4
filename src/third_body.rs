@@ -31,8 +31,8 @@ pub struct Dots {
 // argument_of_perigee: the angle between the ascending node and the orbit's
 //                      point of closest approach to the earth ω₀, in rad
 // n0: mean number of orbits per day (Brouwer mean motion) n₀", in rad.min⁻¹
-// third_body_inclination_0_sine: the sine of the third body's inclination_0 sin Iₓ
-// third_body_inclination_0_cosine: the cosine of the third body's inclination_0 cos Iₓ
+// third_body_inclination_sine: the sine of the third body's inclination_0 sin Iₓ
+// third_body_inclination_cosine: the cosine of the third body's inclination_0 cos Iₓ
 // delta_right_ascension_sine: the sine of the third body's relative
 //                             right ascension of the ascending node sin(Ω₀ - Ωₓ)
 // delta_right_ascension_cosine: the cosine of the third body's relative
@@ -49,11 +49,11 @@ pub fn perturbations_and_dots(
     eccentricity_0: f64,
     argument_of_perigee_0: f64,
     n0: f64,
-    third_body_inclination_0_sine: f64,
-    third_body_inclination_0_cosine: f64,
+    third_body_inclination_sine: f64,
+    third_body_inclination_cosine: f64,
     delta_right_ascension_sine: f64,
     delta_right_ascension_cosine: f64,
-    third_body_eccentricity_0: f64,
+    third_body_eccentricity: f64,
     third_body_argument_of_perigee_sine: f64,
     third_body_argument_of_perigee_cosine: f64,
     third_body_perturbation_coefficient: f64,
@@ -65,32 +65,32 @@ pub fn perturbations_and_dots(
     // aₓ₁ = cos ωₓ cos(Ω₀ - Ωₓ) + sin ωₓ cos Iₓ sin(Ω₀ - Ωₓ)
     let ax1 = third_body_argument_of_perigee_cosine * delta_right_ascension_cosine
         + third_body_argument_of_perigee_sine
-            * third_body_inclination_0_cosine
+            * third_body_inclination_cosine
             * delta_right_ascension_sine;
 
     // aₓ₃ = - sin ωₓ cos(Ω₀ - Ωₓ) + cos ωₓ cos Iₓ sin(Ω₀ - Ωₓ)
     let ax3 = -third_body_argument_of_perigee_sine * delta_right_ascension_cosine
         + third_body_argument_of_perigee_cosine
-            * third_body_inclination_0_cosine
+            * third_body_inclination_cosine
             * delta_right_ascension_sine;
 
     // aₓ₇ = - cos ωₓ sin(Ω₀ - Ωₓ) + sin ωₓ cos Iₓ cos(Ω₀ - Ωₓ)
     let ax7 = -third_body_argument_of_perigee_cosine * delta_right_ascension_sine
         + third_body_argument_of_perigee_sine
-            * third_body_inclination_0_cosine
+            * third_body_inclination_cosine
             * delta_right_ascension_cosine;
 
     // aₓ₈ = sin ωₓ sin Iₓ
-    let ax8 = third_body_argument_of_perigee_sine * third_body_inclination_0_sine;
+    let ax8 = third_body_argument_of_perigee_sine * third_body_inclination_sine;
 
     // aₓ₉ = sin ωₓ sin(Ω₀ - Ωₓ) + cos ωₓ cos Iₓ cos(Ω₀ - Ωₓ)
     let ax9 = third_body_argument_of_perigee_sine * delta_right_ascension_sine
         + third_body_argument_of_perigee_cosine
-            * third_body_inclination_0_cosine
+            * third_body_inclination_cosine
             * delta_right_ascension_cosine;
 
     // aₓ₁₀ = cos ωₓ sin Iₓ
-    let ax10 = third_body_argument_of_perigee_cosine * third_body_inclination_0_sine;
+    let ax10 = third_body_argument_of_perigee_cosine * third_body_inclination_sine;
 
     // aₓ₂ = aₓ₇ cos I₀ + aₓ₈ sin I₀
     let ax2 = inclination_0.cos() * ax7 + inclination_0.sin() * ax8;
@@ -140,29 +140,17 @@ pub fn perturbations_and_dots(
     // Zₓ₁₁ = - 6 aₓ₁ aₓ₅ + e₀² (- 24 Xₓ₁ Xₓ₇ - 6 Xₓ₃ Xₓ₅)
     let zx11 = -6.0 * ax1 * ax5 + eccentricity_0.powi(2) * (-24.0 * xx1 * xx7 - 6.0 * xx3 * xx5);
 
-    // Zₓ₁₂ = - 6 (aₓ₁ aₓ₆ + aₓ₃ aₓ₅) + e₀² (- 24 (Xₓ₂ Xₓ₇ + Xₓ₁ Xₓ₈) - 6 (Xₓ₃ Xₓ₆ + Xₓ₄ Xₓ₅))
-    let zx12 = -6.0 * (ax1 * ax6 + ax3 * ax5)
-        + eccentricity_0.powi(2)
-            * (-24.0 * (xx2 * xx7 + xx1 * xx8) - 6.0 * (xx3 * xx6 + xx4 * xx5));
-
     // Zₓ₁₃ = - 6 aₓ₃ aₓ₆ + e₀² (-24 Xₓ₂ Xₓ₈ - 6 Xₓ₄ Xₓ₆)
     let zx13 = -6.0 * ax3 * ax6 + eccentricity_0.powi(2) * (-24.0 * xx2 * xx8 - 6.0 * xx4 * xx6);
 
     // Zₓ₂₁ = 6 aₓ₂ aₓ₅ + e₀² (24.0 Xₓ₁ Xₓ₅ - 6 Xₓ₃ Xₓ₇)
     let zx21 = 6.0 * ax2 * ax5 + eccentricity_0.powi(2) * (24.0 * xx1 * xx5 - 6.0 * xx3 * xx7);
 
-    // Zₓ₂₂ = 6 (aₓ₄ aₓ₅ + aₓ₂ aₓ₆) + e₀² (24 (Xₓ₂ Xₓ₅ + Xₓ₁ Xₓ₆) - 6 (Xₓ₄ Xₓ₇ + Xₓ₃ Xₓ₈))
-    let zx22 = 6.0 * (ax4 * ax5 + ax2 * ax6)
-        + eccentricity_0.powi(2) * (24.0 * (xx2 * xx5 + xx1 * xx6) - 6.0 * (xx4 * xx7 + xx3 * xx8));
-
     // Zₓ₂₃ = 6 aₓ₄ aₓ₆ + e₀² (24 Xₓ₂ Xₓ₆ - 6 Xₓ₄ Xₓ₈)
     let zx23 = 6.0 * ax4 * ax6 + eccentricity_0.powi(2) * (24.0 * xx2 * xx6 - 6.0 * xx4 * xx8);
 
     // Zₓ₁ = 2 (3 (aₓ₁² + aₓ₂²) + Zₓ₃₁ e₀²) + p₁ Zₓ₃₁
     let zx1 = (3.0 * (ax1.powi(2) + ax2.powi(2)) + zx31 * eccentricity_0.powi(2)) * 2.0 + p1 * zx31;
-
-    // Zₓ₂ = 2 (6 (aₓ₁ aₓ₃ + aₓ₂ aₓ₄) + Zₓ₃₂ e₀²) + p₁ Zₓ₃₂
-    let zx2 = (6.0 * (ax1 * ax3 + ax2 * ax4) + zx32 * eccentricity_0.powi(2)) * 2.0 + p1 * zx32;
 
     // Zₓ₃ = 2 (3 (aₓ₃² + aₓ₄²) + Zₓ₃₃ e₀²) + p₁ Zₓ₃₃
     let zx3 = (3.0 * (ax3.powi(2) + ax4.powi(2)) + zx33 * eccentricity_0.powi(2)) * 2.0 + p1 * zx33;
@@ -198,20 +186,27 @@ pub fn perturbations_and_dots(
             // kₓ₁ = 2 pₓ₃ (Xₓ₂ Xₓ₄ - Xₓ₁ Xₓ₃)
             kx1: 2.0 * px3 * (xx2 * xx4 - xx1 * xx3),
 
-            // kₓ₂ = 2 pₓ₁ Zₓ₁₂
-            kx2: 2.0 * px1 * zx12,
+            // kₓ₂ = 2 pₓ₁ (- 6 (aₓ₁ aₓ₆ + aₓ₃ aₓ₅) + e₀² (- 24 (Xₓ₂ Xₓ₇ + Xₓ₁ Xₓ₈) - 6 (Xₓ₃ Xₓ₆ + Xₓ₄ Xₓ₅)))
+            kx2: 2.0
+                * px1
+                * (-6.0 * (ax1 * ax6 + ax3 * ax5)
+                    + eccentricity_0.powi(2)
+                        * (-24.0 * (xx2 * xx7 + xx1 * xx8) - 6.0 * (xx3 * xx6 + xx4 * xx5))),
 
             // kₓ₃ = 2 pₓ₁ (Zₓ₁₃ - Zₓ₁₁)
             kx3: 2.0 * px1 * (zx13 - zx11),
 
-            // kₓ₄ = - 2 pₓ₀ Zₓ₂
-            kx4: -2.0 * px0 * zx2,
+            // kₓ₄ = - 2 pₓ₀ (2 (6 (aₓ₁ aₓ₃ + aₓ₂ aₓ₄) + Zₓ₃₂ e₀²) + p₁ Zₓ₃₂)
+            kx4: -2.0
+                * px0
+                * ((6.0 * (ax1 * ax3 + ax2 * ax4) + zx32 * eccentricity_0.powi(2)) * 2.0
+                    + p1 * zx32),
 
             // kₓ₅ = - 2 pₓ₀ (Zₓ₃ - Zₓ₁)
             kx5: -2.0 * px0 * (zx3 - zx1),
 
             // kₓ₆ = - 2 pₓ₀ (- 21 - 9 e₀²) eₓ
-            kx6: -2.0 * px0 * (-21.0 - 9.0 * eccentricity_0.powi(2)) * third_body_eccentricity_0,
+            kx6: -2.0 * px0 * (-21.0 - 9.0 * eccentricity_0.powi(2)) * third_body_eccentricity,
 
             // kₓ₇ = 2 pₓ₂ Zₓ₃₂
             kx7: 2.0 * px2 * zx32,
@@ -220,10 +215,14 @@ pub fn perturbations_and_dots(
             kx8: 2.0 * px2 * (zx33 - zx31),
 
             // kₓ₉ = - 18 pₓ₂ eₓ
-            kx9: -18.0 * px2 * third_body_eccentricity_0,
+            kx9: -18.0 * px2 * third_body_eccentricity,
 
-            // kₓ₁₀ = - 2 pₓ₁ Zₓ₂₂
-            kx10: -2.0 * px1 * zx22,
+            // kₓ₁₀ = - 2 pₓ₁ (6 (aₓ₄ aₓ₅ + aₓ₂ aₓ₆) + e₀² (24 (Xₓ₂ Xₓ₅ + Xₓ₁ Xₓ₆) - 6 (Xₓ₄ Xₓ₇ + Xₓ₃ Xₓ₈)))
+            kx10: -2.0
+                * px1
+                * (6.0 * (ax4 * ax5 + ax2 * ax6)
+                    + eccentricity_0.powi(2)
+                        * (24.0 * (xx2 * xx5 + xx1 * xx6) - 6.0 * (xx4 * xx7 + xx3 * xx8))),
 
             // kₓ₁₁ = - 2 pₓ₁ (Zₓ₂₃ - Zₓ₂₁)
             kx11: -2.0 * px1 * (zx23 - zx21),
@@ -252,7 +251,7 @@ pub fn perturbations_and_dots(
 impl Perturbations {
     pub fn long_period_periodic_effects(
         &self,
-        third_body_eccentricity_0: f64,
+        third_body_eccentricity: f64,
         third_body_mean_motion: f64,
         t: f64,
     ) -> (f64, f64, f64, f64, f64) {
@@ -260,24 +259,24 @@ impl Perturbations {
         let third_body_mean_anomaly = self.third_body_mean_anomaly_0 + third_body_mean_motion * t;
 
         // fₓ = Mₓ + 2 eₓ sin Mₓ
-        let fx = third_body_mean_anomaly
-            + 2.0 * third_body_eccentricity_0 * third_body_mean_anomaly.sin();
+        let fx =
+            third_body_mean_anomaly + 2.0 * third_body_eccentricity * third_body_mean_anomaly.sin();
 
-        // fₓ₂ = ¹/₂ sin²fₓ - ¹/₄
+        // Fₓ₂ = ¹/₂ sin²fₓ - ¹/₄
         let fx2 = 0.5 * fx.sin().powi(2) - 0.25;
 
-        // fₓ₃ = - ¹/₂ sin fₓ cos fₓ
+        // Fₓ₃ = - ¹/₂ sin fₓ cos fₓ
         let fx3 = -0.5 * fx.sin() * fx.cos();
         (
-            // δeₓ = kₓ₀ fₓ₂ + kₓ₁ fₓ₃
+            // δeₓ = kₓ₀ Fₓ₂ + kₓ₁ Fₓ₃
             self.kx0 * fx2 + self.kx1 * fx3,
-            // δIₓ = kₓ₂ fₓ₂ + kₓ₃ fₓ₃
+            // δIₓ = kₓ₂ Fₓ₂ + kₓ₃ Fₓ₃
             self.kx2 * fx2 + self.kx3 * fx3,
-            // δMₓ = kₓ₄ fₓ₂ + kₓ₅ fₓ₃ + kₓ₆ sin fₓ
+            // δMₓ = kₓ₄ Fₓ₂ + kₓ₅ Fₓ₃ + kₓ₆ sin fₓ
             self.kx4 * fx2 + self.kx5 * fx3 + self.kx6 * fx.sin(),
-            // pₓ₄ = kₓ₇ fₓ₂ + kₓ₈ fₓ₃ + kₓ₉ sin fₓ
+            // pₓ₄ = kₓ₇ Fₓ₂ + kₓ₈ Fₓ₃ + kₓ₉ sin fₓ
             self.kx7 * fx2 + self.kx8 * fx3 + self.kx9 * fx.sin(),
-            // pₓ₅ = kₓ₁₀ fₓ₂ + kₓ₁₁ fₓ₃
+            // pₓ₅ = kₓ₁₀ Fₓ₂ + kₓ₁₁ Fₓ₃
             self.kx10 * fx2 + self.kx11 * fx3,
         )
     }

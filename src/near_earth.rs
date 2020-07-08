@@ -18,22 +18,22 @@ pub fn constants<'a>(
     k14: f64,
     p2: f64,
     p3: f64,
-    p6: f64,
-    p8: f64,
-    p13: f64,
+    p7: f64,
+    p9: f64,
     p14: f64,
+    p15: f64,
 ) -> propagator::Constants<'a> {
     propagator::Constants {
         geopotential: geopotential,
 
-        // Ω̇ = p₁₃
-        right_ascension_dot: p13,
+        // Ω̇ = p₁₄
+        right_ascension_dot: p14,
 
         // ω̇ = k₁₄
         argument_of_perigee_dot: k14,
 
-        // Ṁ = p₁₄
-        mean_anomaly_dot: p14,
+        // Ṁ = p₁₅
+        mean_anomaly_dot: p15,
         c1: c1,
         c4: c4,
         k0: k0,
@@ -80,43 +80,41 @@ pub fn constants<'a>(
                 // D₂ = 4 a₀" ξ C₁²
                 let d2 = 4.0 * a0 * xi * c1.powi(2);
 
-                // p₁₅ = D₂ ξ C₁ / 3
-                let p15 = d2 * xi * c1 / 3.0;
+                // p₁₆ = D₂ ξ C₁ / 3
+                let p16 = d2 * xi * c1 / 3.0;
 
-                // D₃ = (17 a + s) p₁₅
-                let d3 = (17.0 * a0 + s) * p15;
+                // D₃ = (17 a + s) p₁₆
+                let d3 = (17.0 * a0 + s) * p16;
 
-                // D₄ = ¹/₂ p₁₅ a₀" ξ (221 a₀" + 31 s) C₁
-                let d4 = 0.5 * p15 * a0 * xi * (221.0 * a0 + 31.0 * s) * c1;
+                // D₄ = ¹/₂ p₁₆ a₀" ξ (221 a₀" + 31 s) C₁
+                let d4 = 0.5 * p16 * a0 * xi * (221.0 * a0 + 31.0 * s) * c1;
 
                 propagator::HighAltitude::Yes {
-                    // C₅ = 2 B* p₈ a₀" p₂ (1 + 2.75 (η² + η e₀) + e₀ η³)
-                    c5: drag_term * (2.0
-                        * p8
-                        * a0
-                        * p2
-                        * (1.0
-                            + 2.75 * (eta.powi(2) + eta * orbit_0.eccentricity)
-                            + eta * orbit_0.eccentricity * eta.powi(2))),
+                    // C₅ = 2 B* p₉ a₀" p₂ (1 + 2.75 (η² + η e₀) + e₀ η³)
+                    c5: drag_term
+                        * (2.0
+                            * p9
+                            * a0
+                            * p2
+                            * (1.0
+                                + 2.75 * (eta.powi(2) + eta * orbit_0.eccentricity)
+                                + eta * orbit_0.eccentricity * eta.powi(2))),
                     d2: d2,
                     d3: d3,
                     d4: d4,
                     eta: eta,
 
-                    // k₇ = (1 + η cos M₀)³
-                    k7: (1.0 + eta * orbit_0.mean_anomaly.cos()).powi(3),
+                    // k₇ = sin M₀
+                    k7: orbit_0.mean_anomaly.sin(),
 
-                    // k₈ = sin M₀
-                    k8: orbit_0.mean_anomaly.sin(),
+                    // k₈ = D₂ + 2 C₁²
+                    k8: d2 + 2.0 * c1.powi(2),
 
-                    // k₉ = D₂ + 2 C₁²
-                    k9: d2 + 2.0 * c1.powi(2),
+                    // k₉ = ¹/₄ (3 D₃ + C₁ (12 D₂ + 10 C₁²))
+                    k9: 0.25 * (3.0 * d3 + c1 * (12.0 * d2 + 10.0 * c1.powi(2))),
 
-                    // k₁₀ = ¹/₄ (3 D₃ + C₁ (12 D₂ + 10 C₁²))
-                    k10: 0.25 * (3.0 * d3 + c1 * (12.0 * d2 + 10.0 * c1.powi(2))),
-
-                    // k₁₁ = ¹/₅ (3 D₄ + 12 C₁ D₃ + 6 D₂² + 15 C₁² (2 D₂ + C₁²))
-                    k11: 0.2
+                    // k₁₀ = ¹/₅ (3 D₄ + 12 C₁ D₃ + 6 D₂² + 15 C₁² (2 D₂ + C₁²))
+                    k10: 0.2
                         * (3.0 * d4
                             + 12.0 * c1 * d3
                             + 6.0 * d2.powi(2)
@@ -124,12 +122,15 @@ pub fn constants<'a>(
 
                     elliptic: if orbit_0.eccentricity > 1.0e-4 {
                         propagator::Elliptic::Yes {
-                            //                     J₃ p₆ ξ  n₀" sin I₀
+                            // k₁₁ = (1 + η cos M₀)³
+                            k11: (1.0 + eta * orbit_0.mean_anomaly.cos()).powi(3),
+
+                            //                     J₃ p₇ ξ  n₀" sin I₀
                             // k₁₂ = - 2 B* cos ω₀ -- ----------------
                             //                     J₂        e₀
                             k12: drag_term
                                 * (-2.0
-                                    * p6
+                                    * p7
                                     * xi
                                     * (geopotential.j3 / geopotential.j2)
                                     * orbit_0.mean_motion
@@ -137,10 +138,10 @@ pub fn constants<'a>(
                                     / orbit_0.eccentricity)
                                 * orbit_0.argument_of_perigee.cos(),
 
-                            //         2 p₆ B*
+                            //         2 p₇ B*
                             // k₁₃ = - - -----
                             //         3 e₀ η
-                            k13: -2.0 / 3.0 * p6 * drag_term / (orbit_0.eccentricity * eta),
+                            k13: -2.0 / 3.0 * p7 * drag_term / (orbit_0.eccentricity * eta),
                         }
                     } else {
                         propagator::Elliptic::No {}
@@ -163,22 +164,20 @@ impl<'a> propagator::Constants<'a> {
         k6: f64,
         high_altitude: &propagator::HighAltitude,
         t: f64,
-        p21: f64,
         p22: f64,
-    ) -> propagator::Result<(propagator::Orbit, f64, f64, f64, f64, f64, f64, f64)> {
-        // p₂₃ = M₀ + Ṁ t
-        let p23 = self.orbit_0.mean_anomaly + self.mean_anomaly_dot * t;
-        let (argument_of_perigee, mean_anomaly, a, l, p25) = match high_altitude {
+        p23: f64,
+    ) -> propagator::Result<(propagator::Orbit, f64, f64, f64, f64, f64, f64)> {
+        // p₂₄ = M₀ + Ṁ t
+        let p24 = self.orbit_0.mean_anomaly + self.mean_anomaly_dot * t;
+        let (argument_of_perigee, mean_anomaly, a, p27) = match high_altitude {
             propagator::HighAltitude::No {} => (
-                // ω = p₂₂
-                p22,
-                // M = p₂₃
+                // ω = p₂₃
                 p23,
+                // M = p₂₄ + n₀" k₁ t²
+                p24 + self.orbit_0.mean_motion * self.k1 * t.powi(2),
                 // a = a₀" (1 - C₁ t)²
                 a0 * (1.0 - self.c1 * t).powi(2),
-                // 𝕃 = p₂₃ + n₀" k₁ t²
-                p23 + self.orbit_0.mean_motion * self.k1 * t.powi(2),
-                // p₂₅ = e₀ - C₄ t
+                // p₂₇ = e₀ - C₄ t
                 self.orbit_0.eccentricity - self.c4 * t,
             ),
             propagator::HighAltitude::Yes {
@@ -191,51 +190,47 @@ impl<'a> propagator::Constants<'a> {
                 k8,
                 k9,
                 k10,
-                k11,
                 elliptic,
             } => {
-                // ω = │ p₂₂ - p₂₄ if e₀ > 10⁻⁴
-                //     │ p₂₂       otherwise
-                // M = │ p₂₃ + p₂₄ if e₀ > 10⁻⁴
+                // ω = │ p₂₃ - p₂₅ if e₀ > 10⁻⁴
                 //     │ p₂₃       otherwise
-                let (argument_of_perigee, mean_anomaly) = match elliptic {
-                    propagator::Elliptic::Yes { k12, k13 } => {
-                        // p₂₄ = k₁₃ ((1 + η cos p₂₃)³ - k₇) + k₁₂ t
-                        let p24 = k13 * ((1.0 + eta * p23.cos()).powi(3) - k7) + k12 * t;
-                        (p22 - p24, p23 + p24)
+                // p₂₆ = │ p₂₄ + p₂₅ if e₀ > 10⁻⁴
+                //       │ p₂₄       otherwise
+                let (argument_of_perigee, p26) = match elliptic {
+                    propagator::Elliptic::Yes { k11, k12, k13 } => {
+                        // p₂₅ = k₁₃ ((1 + η cos p₂₄)³ - k₁₁) + k₁₂ t
+                        let p25 = k13 * ((1.0 + eta * p24.cos()).powi(3) - k11) + k12 * t;
+                        (p23 - p25, p24 + p25)
                     }
-                    propagator::Elliptic::No {} => (p22, p23),
+                    propagator::Elliptic::No {} => (p23, p24),
                 };
                 (
                     argument_of_perigee,
-                    mean_anomaly,
+                    // M = p₂₆ + n₀" (k₁ t² + k₈ t³ + t⁴ (k₉ + t k₁₀)
+                    p26
+                        + self.orbit_0.mean_motion
+                            * (self.k1 * t.powi(2) + k8 * t.powi(3) + t.powi(4) * (k9 + t * k10)),
                     // a = a₀" (1 - C₁ t - D₂ t² - D₃ t³ - D₄ t⁴)²
                     a0 * (1.0 - self.c1 * t - d2 * t.powi(2) - d3 * t.powi(3) - d4 * t.powi(4))
                         .powi(2),
-                    // 𝕃 = M + n₀" (k₁ t² + k₉ t³ + t⁴ (k₁₀ + t k₁₁)
-                    mean_anomaly
-                        + self.orbit_0.mean_motion
-                            * (self.k1 * t.powi(2) + k9 * t.powi(3) + t.powi(4) * (k10 + t * k11)),
-                    // p₂₅ = e₀ - (C₄ t + C₅ (sin M - k₈))
-                    self.orbit_0.eccentricity
-                        - (self.c4 * t
-                            + c5 * (mean_anomaly.sin() - k8)),
+                    // p₂₇ = e₀ - (C₄ t + C₅ (sin p₂₆ - k₇))
+                    self.orbit_0.eccentricity - (self.c4 * t + c5 * (p26.sin() - k7)),
                 )
             }
         };
-        if p25 >= 1.0 || p25 < -0.001 {
+        if p27 >= 1.0 || p27 < -0.001 {
             Err(propagator::Error::new("diverging eccentricity"))
         } else {
-            // e = │ 10⁻⁶ if p₂₅ < 10⁻⁶
-            //     │ p₂₅  otherwise
-            let eccentricity = p25.max(1.0e-6);
+            // e = │ 10⁻⁶ if p₂₇ < 10⁻⁶
+            //     │ p₂₇  otherwise
+            let eccentricity = p27.max(1.0e-6);
             Ok((
                 propagator::Orbit {
                     // I = I₀
                     inclination: self.orbit_0.inclination,
 
-                    // Ω = p₂₁
-                    right_ascension: p21,
+                    // Ω = p₂₂
+                    right_ascension: p22,
                     eccentricity: eccentricity,
                     argument_of_perigee: argument_of_perigee,
                     mean_anomaly: mean_anomaly,
@@ -244,16 +239,15 @@ impl<'a> propagator::Constants<'a> {
                     mean_motion: self.geopotential.ke / a.powf(1.5),
                 },
                 a,
-                l,
-                // p₃₀ = k₂
+                // p₃₂ = k₂
                 k2,
-                // p₃₁ = k₃
+                // p₃₃ = k₃
                 k3,
-                // p₃₂ = k₄
+                // p₃₄ = k₄
                 k4,
-                // p₃₃ = k₅
+                // p₃₅ = k₅
                 k5,
-                // p₃₄ = k₆
+                // p₃₆ = k₆
                 k6,
             ))
         }

@@ -38,7 +38,7 @@ pub struct Prediction {
 
 pub enum Elliptic {
     No {},
-    Yes { k12: f64, k13: f64 },
+    Yes { k11: f64, k12: f64, k13: f64 },
 }
 
 pub enum HighAltitude {
@@ -53,7 +53,6 @@ pub enum HighAltitude {
         k8: f64,
         k9: f64,
         k10: f64,
-        k11: f64,
         elliptic: Elliptic,
     },
 }
