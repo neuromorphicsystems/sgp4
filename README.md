@@ -677,13 +677,17 @@ D₅₄₃₃ = 2 p₂₁ 2.1765803 × 10⁻⁹ (⁹⁴⁵/₃₂ sin I₀
 
 #### Common propagation
 The following values depend on the propagation time `t` (minutes since epoch).
+
 Named conditions have the following meaning:
 - `near earth`: `n₀" ≤ 2π / 225`
 - `low altitude near earth`: `near earth` and `p₃ < 220 / (aₑ + 1)`
 - `high altitude near earth`: `near earth` and `p₃ ≥ 220 / (aₑ + 1)`
 - `elliptic high altitude near earth`: `high altitude near earth` and `e₀ > 10⁻⁴`
+- `non-elliptic near earth`: `low altitude near earth` or `high altitude near earth` and `e₀ ≤ 10⁻⁴`
 - `deep space`: `n₀" > 2π / 225`
-- `AFSPC compatibility mode`: use the same expression as the original implementation, with `ω` discontinuities at `p₂₂ = 0 mod 2π`
+- `non-Lyddane deep space`: `deep space` and `I ≥ 0.2`
+- `Lyddane deep space`: `deep space` and `I < 0.2`
+- `AFSPC Lyddane deep space`: `Lyddane deep space` and use the same expression as the original AFSPC implementation, with an `ω` discontinuity at `p₂₂ = 0`
 
 ```
 p₂₂ = Ω₀ + Ω̇ t + k₀ t²
@@ -694,9 +698,9 @@ I = │ I₀                    if near earth
     │ I₀ + İ t + (δIₛ + δIₗ) otherwise
 
 Ω = │ p₂₂                      if near earth
-    │ p₂₂ + (pₛ₅ + pₗ₅) / sin I if deep space and I ≥ 0.2
-    │ p₃₀ + 2π                 if deep space, I < 0.2 and p₃₀ + π < p₂₂ rem 2π
-    │ p₃₀ - 2π                 if deep space, I < 0.2 and p₃₀ - π > p₂₂ rem 2π
+    │ p₂₂ + (pₛ₅ + pₗ₅) / sin I if non-Lyddane deep space
+    │ p₃₀ + 2π                 if Lyddane deep space and p₃₀ + π < p₂₂ rem 2π
+    │ p₃₀ - 2π                 if Lyddane deep space and p₃₀ - π > p₂₂ rem 2π
     │ p₃₀                      otherwise
 
 e = │ 10⁻⁶              if near earth and p₂₇ < 10⁻⁶
@@ -705,11 +709,10 @@ e = │ 10⁻⁶              if near earth and p₂₇ < 10⁻⁶
     │ p₃₁ + (δeₛ + δeₗ)  otherwise
 
 ω = │ p₂₃ - p₂₅                                   if elliptic high altitude near earth
-    │ p₂₃                                         if low altitude near earth
-    │ p₂₃ + (pₛ₄ + pₗ₄) - cos I (pₛ₅ + pₗ₅) / sin I if deep space and I ≥ 0.2
+    │ p₂₃                                         if non-elliptic near earth
+    │ p₂₃ + (pₛ₄ + pₗ₄) - cos I (pₛ₅ + pₗ₅) / sin I if non-Lyddane deep space
     │ p₂₃ + (pₛ₄ + pₗ₄) + cos I ((p₂₂ rem 2π) - Ω)
-    │ - (δIₛ + δIₗ) (p₂₂ mod 2π) sin I             if deep space, I < 0.2
-    │                                             and AFSPC compatibility mode
+    │ - (δIₛ + δIₗ) (p₂₂ mod 2π) sin I             if AFSPC Lyddane deep space
     │ p₂₃ + (pₛ₄ + pₗ₄) + cos I ((p₂₂ rem 2π) - Ω)
     │ - (δIₛ + δIₗ) (p₂₂ rem 2π) sin I             otherwise
 
@@ -837,10 +840,12 @@ p₂₇ = | e₀ - (C₄ t + C₅ (sin p₂₆ - k₇)) if high altitude
 
 #### High altitude near earth propagation
 Defined only if `n₀" > 2π / 225` (near earth) and `p₃ ≥ 220 / (aₑ + 1)` (high altitude).
+
+`elliptic` means `e₀ > 10⁻⁴`.
 ```
 p₂₅ = k₁₃ ((1 + η cos p₂₄)³ - k₁₁) + k₁₂ t
 
-p₂₆ = │ p₂₄ + p₂₅ if e₀ > 10⁻⁴ (elliptic)
+p₂₆ = │ p₂₄ + p₂₅ if elliptic
       │ p₂₄       otherwise
 ```
 
