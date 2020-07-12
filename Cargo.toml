@@ -10,6 +10,7 @@ readme = "README.md"
 license-file = "LICENSE"
 keywords = ["SGP4", "SDP4", "TLE", "OMM"]
 categories = ["science"]
+edition = "2018"
 
 [dependencies]
 chrono = {version = "0.4", features = ["serde"]}
