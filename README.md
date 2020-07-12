@@ -14,13 +14,24 @@ We drew inspiration from the incomplete https://github.com/natronics/rust-sgp4 t
 
 ## Benchmarks
 
-## Variables and expressions
+## Variables and mathematical expressions
+
+### Variables
 
 Each variable is used to store the result of one and only one expression. Most variables are immutable, with the exception of the variable `(E + ω)ᵢ` used to solve Kepler's equation and the state variables `tᵢ`, `nᵢ` and `λᵢ` used to integrate the resonance effects of Earth gravity.
 
-The following tables list the variables used in the code and their associated mathematical symbol. Where possible, we used symbols from [[2]](#2). Sub-expressions without a name in [[2]](#2) follow the convention `kₙ, n ∈ ℕ` if they are shared between initialization and propagation, and `pₙ, n ∈ ℕ` if they are local to initialization or propagation.
+The following tables list the variables used in the code and their associated mathematical symbol. Where possible, we used symbols from [[2]](#2). Partial expressions without a name in [[2]](#2) follow the convention `kₙ, n ∈ ℕ` if they are shared between initialization and propagation, and `pₙ, n ∈ ℕ` if they are local to initialization or propagation.
 
-The following expressions are constants or depend solely on epoch elements.
+1. [Initialization variables](#initialization-variables)
+2. [Propagation variables](#propagation-variables)
+3. [Third-body initialization variables](#third-body-initialization-variables)
+4. [Third-body propagation variables](#third-body-propagation-variables)
+
+---
+
+#### Initialization variables
+
+The following variables depend solely on epoch elements.
 
 | variable                                | symbol         | description |
 |:----------------------------------------|:---------------|:------------|
@@ -133,6 +144,8 @@ The following expressions are constants or depend solely on epoch elements.
 | `d5421`                                 | `D₅₄₂₁`        | see `D₂₂₁₁` |
 | `d5433`                                 | `D₅₄₃₃`        | see `D₂₂₁₁` |
 
+#### Propagation variables
+
 The following expressions depend on the propagation time `t`.
 
 | variable                                | symbol         | description |
@@ -203,11 +216,13 @@ The following expressions depend on the propagation time `t`.
 | `ResonanceState::lambda`                | `λᵢ`           | resonance effects of Earth gravity variable at epoch plus `i Δt` |
 | `p30`                                   | `p₃₀`          | non-normalised `Ω` in Lyddane deep space propagation |
 
+#### Third-body initialization variables
+
 The contribution of the Sun and the Moon to the orbital elements are calculated with a unique set of expressions. *src/third_body.rs* provides a generic implementation of these expressions. Variables specific to the third body (either the Sun or the Moon) are annotated with `x`. In every other file, these variables are annotated with `s` if they correspond to solar perturbations, and `l` if they correspond to lunar perturbations.
 
-The `aₓₙ`, `Xₓₙ`, `Zₓₙ` (`n ∈ ℕ`), `Fₓ₂` and `Fₓ₃` expressions correspond to the `aₙ`, `Xₙ`, `Zₙ`, `F₂` and `F₃` expressions in [[2]](#2). The added `x` highlights the dependence on the perturbing third body.
+The `aₓₙ`, `Xₓₙ`, `Zₓₙ` (`n ∈ ℕ`), `Fₓ₂` and `Fₓ₃` variables correspond to the `aₙ`, `Xₙ`, `Zₙ`, `F₂` and `F₃` variables in [[2]](#2). The added `x` highlights the dependence on the perturbing third body.
 
-The following expressions are constants or depend solely on epoch elements.
+The following variables depend solely on epoch elements.
 
 | variable                                | symbol         | description |
 |:----------------------------------------|:---------------|:------------|
@@ -267,7 +282,9 @@ The following expressions are constants or depend solely on epoch elements.
 | `third_body_dots.agument_of_perigee`    | `ω̇ₓ`           | secular contribution of the Sun (`ω̇ₛ`) or the Moon (`ω̇ₗ`) to the argument of perigee |
 | `third_body_dots.mean_anomaly`          | `Ṁₓ`           | secular contribution of the Sun (`Ṁₛ`) or the Moon (`Ṁₗ`) to the mean anomaly |
 
-The following expressions depend on the propagation time `t`.
+#### Third-body propagation variables
+
+The following variables depend on the propagation time `t`.
 
 | variable                                | symbol         | description |
 |:----------------------------------------|:---------------|:------------|
