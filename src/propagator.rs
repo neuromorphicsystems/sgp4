@@ -1,6 +1,6 @@
+use crate::gp;
 use crate::model;
 use crate::third_body;
-use crate::tle;
 
 #[derive(Debug, Clone)]
 pub struct Error {
@@ -23,8 +23,8 @@ impl std::fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
-impl From<tle::Error> for Error {
-    fn from(error: tle::Error) -> Self {
+impl From<gp::Error> for Error {
+    fn from(error: gp::Error) -> Self {
         Error::new(&error.to_string())
     }
 }

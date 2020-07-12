@@ -1,10 +1,11 @@
 mod deep_space;
+pub mod gp;
 pub mod model;
 mod near_earth;
 mod propagator;
 mod third_body;
-pub mod tle;
 
+pub use gp::Elements;
 pub use propagator::Constants;
 pub use propagator::Error;
 pub use propagator::Orbit;
@@ -254,38 +255,38 @@ impl<'a> Constants<'a> {
         }
     }
 
-    pub fn from_tle(tle: &tle::Tle) -> Result<Self> {
+    pub fn from_elements(elements: &gp::Elements) -> Result<Self> {
         Constants::new(
             &model::WGS84,
             model::iau_epoch_to_sidereal_time,
-            tle.epoch(),
-            tle.drag_term,
+            elements.epoch(),
+            elements.drag_term,
             Orbit::from_kozai_elements(
                 &model::WGS72,
-                tle.inclination * (model::PI / 180.0),
-                tle.right_ascension * (model::PI / 180.0),
-                tle.eccentricity,
-                tle.argument_of_perigee * (model::PI / 180.0),
-                tle.mean_anomaly * (model::PI / 180.0),
-                tle.mean_motion * (model::PI / 720.0),
+                elements.inclination * (model::PI / 180.0),
+                elements.right_ascension * (model::PI / 180.0),
+                elements.eccentricity,
+                elements.argument_of_perigee * (model::PI / 180.0),
+                elements.mean_anomaly * (model::PI / 180.0),
+                elements.mean_motion * (model::PI / 720.0),
             )?,
         )
     }
 
-    pub fn from_tle_afspc_compatibility_mode(tle: &tle::Tle) -> Result<Self> {
+    pub fn from_elements_afspc_compatibility_mode(elements: &gp::Elements) -> Result<Self> {
         Constants::new(
             &model::WGS72,
             model::afspc_epoch_to_sidereal_time,
-            tle.epoch_afspc_compatibility_mode(),
-            tle.drag_term,
+            elements.epoch_afspc_compatibility_mode(),
+            elements.drag_term,
             Orbit::from_kozai_elements(
                 &model::WGS72,
-                tle.inclination * (model::PI / 180.0),
-                tle.right_ascension * (model::PI / 180.0),
-                tle.eccentricity,
-                tle.argument_of_perigee * (model::PI / 180.0),
-                tle.mean_anomaly * (model::PI / 180.0),
-                tle.mean_motion * (model::PI / 720.0),
+                elements.inclination * (model::PI / 180.0),
+                elements.right_ascension * (model::PI / 180.0),
+                elements.eccentricity,
+                elements.argument_of_perigee * (model::PI / 180.0),
+                elements.mean_anomaly * (model::PI / 180.0),
+                elements.mean_motion * (model::PI / 720.0),
             )?,
         )
     }
@@ -370,7 +371,8 @@ impl<'a> Constants<'a> {
         let ayn = orbit.eccentricity * orbit.argument_of_perigee.sin() + p37 * p32;
 
         // p₃₈ = M + ω + p₃₇ p₃₅ aₓₙ rem 2π
-        let p38 = (orbit.mean_anomaly + orbit.argument_of_perigee + p37 * p35 * axn) % (2.0 * model::PI);
+        let p38 =
+            (orbit.mean_anomaly + orbit.argument_of_perigee + p37 * p35 * axn) % (2.0 * model::PI);
 
         // (E + ω)₀ = p₃₈
         let mut ew = p38;
@@ -403,67 +405,64 @@ impl<'a> Constants<'a> {
         if pl < 0.0 {
             Err(Error::new("negative semi-latus rectum"))
         } else {
-            // p₄₀ = aₓₙ cos(E + ω) + aᵧₙ sin(E + ω)
-            let p40 = axn * ew.cos() + ayn * ew.sin();
+            // p₄₀ = aₓₙ sin(E + ω) - aᵧₙ cos(E + ω)
+            let p40 = axn * ew.sin() - ayn * ew.cos();
 
-            // p₄₁ = aₓₙ sin(E + ω) - aᵧₙ cos(E + ω)
-            let p41 = axn * ew.sin() - ayn * ew.cos();
+            // r = a (1 - aₓₙ cos(E + ω) + aᵧₙ sin(E + ω))
+            let r = a * (1.0 - (axn * ew.cos() + ayn * ew.sin()));
 
-            // r = a (1 - p₄₀)
-            let r = a * (1.0 - p40);
-
-            // ṙ = a¹ᐟ² p₄₁ / r
-            let r_dot = a.sqrt() * p41 / r;
+            // ṙ = a¹ᐟ² p₄₀ / r
+            let r_dot = a.sqrt() * p40 / r;
 
             // β = (1 - p₃₉)¹ᐟ²
             let b = (1.0 - p39).sqrt();
 
-            // p₄₂ = p₄₁ / (1 + β)
-            let p42 = p41 / (1.0 + b);
+            // p₄₁ = p₄₀ / (1 + β)
+            let p41 = p40 / (1.0 + b);
 
-            // p₄₃ = a / r (sin(E + ω) - aᵧₙ - aₓₙ p₄₂)
-            let p43 = a / r * (ew.sin() - ayn - axn * p42);
+            // p₄₂ = a / r (sin(E + ω) - aᵧₙ - aₓₙ p₄₁)
+            let p42 = a / r * (ew.sin() - ayn - axn * p41);
 
-            // p₄₄ = a / r (cos(E + ω) - aₓₙ + aᵧₙ p₄₂)
-            let p44 = a / r * (ew.cos() - axn + ayn * p42);
+            // p₄₃ = a / r (cos(E + ω) - aₓₙ + aᵧₙ p₄₁)
+            let p43 = a / r * (ew.cos() - axn + ayn * p41);
 
-            //           p₄₃
+            //           p₄₂
             // u = tan⁻¹ ---
-            //           p₄₄
-            let u = p43.atan2(p44);
+            //           p₄₃
+            let u = p42.atan2(p43);
 
-            // p₄₅ = 2 p₄₄ p₄₃
-            let p45 = 2.0 * p44 * p43;
+            // p₄₄ = 2 p₄₃ p₄₂
+            let p44 = 2.0 * p43 * p42;
 
-            // p₄₆ = 1 - 2 p₄₃²
-            let p46 = 1.0 - 2.0 * p43.powi(2);
+            // p₄₅ = 1 - 2 p₄₂²
+            let p45 = 1.0 - 2.0 * p42.powi(2);
 
-            // p₄₇ = (¹/₂ J₂ / pₗ) / pₗ
-            let p47 = 0.5 * self.geopotential.j2 / pl / pl;
+            // p₄₆ = (¹/₂ J₂ / pₗ) / pₗ
+            let p46 = 0.5 * self.geopotential.j2 / pl / pl;
 
-            // rₖ = r (1 - ³/₂ p₄₇ β p₃₆) + ¹/₂ (¹/₂ J₂ / pₗ) p₃₃ p₄₆
-            let rk = r * (1.0 - 1.5 * p47 * b * p36)
-                + 0.5 * (0.5 * self.geopotential.j2 / pl) * p33 * p46;
+            // rₖ = r (1 - ³/₂ p₄₆ β p₃₆) + ¹/₂ (¹/₂ J₂ / pₗ) p₃₃ p₄₅
+            let rk = r * (1.0 - 1.5 * p46 * b * p36)
+                + 0.5 * (0.5 * self.geopotential.j2 / pl) * p33 * p45;
 
-            // uₖ = u - ¹/₄ p₄₇ p₃₄ p₄₅
-            let uk = u - 0.25 * p47 * p34 * p45;
+            // uₖ = u - ¹/₄ p₄₆ p₃₄ p₄₄
+            let uk = u - 0.25 * p46 * p34 * p44;
 
-            // Iₖ = I + ³/₂ p₄₇ cos I sin I p₄₆
+            // Iₖ = I + ³/₂ p₄₆ cos I sin I p₄₅
             let inclination_k = orbit.inclination
-                + 1.5 * p47 * orbit.inclination.cos() * orbit.inclination.sin() * p46;
+                + 1.5 * p46 * orbit.inclination.cos() * orbit.inclination.sin() * p45;
 
-            // Ωₖ = Ω + ³/₂ p₄₇ cos I p₄₅
+            // Ωₖ = Ω + ³/₂ p₄₆ cos I p₄₄
             let right_ascension_k =
-                orbit.right_ascension + 1.5 * p47 * orbit.inclination.cos() * p45;
+                orbit.right_ascension + 1.5 * p46 * orbit.inclination.cos() * p44;
 
             // ṙₖ = ṙ + n (¹/₂ J₂ / pₗ) p₃₃ / kₑ
             let rk_dot = r_dot
-                - orbit.mean_motion * (0.5 * self.geopotential.j2 / pl) * p33 * p45
+                - orbit.mean_motion * (0.5 * self.geopotential.j2 / pl) * p33 * p44
                     / self.geopotential.ke;
 
-            // rḟₖ = pₗ¹ᐟ² / r + n (¹/₂ J₂ / pₗ) (p₃₃ p₄₆ + ³/₂ p₃₆) / kₑ
+            // rḟₖ = pₗ¹ᐟ² / r + n (¹/₂ J₂ / pₗ) (p₃₃ p₄₅ + ³/₂ p₃₆) / kₑ
             let rfk_dot = pl.sqrt() / r
-                + orbit.mean_motion * (0.5 * self.geopotential.j2 / pl) * (p33 * p46 + 1.5 * p36)
+                + orbit.mean_motion * (0.5 * self.geopotential.j2 / pl) * (p33 * p45 + 1.5 * p36)
                     / self.geopotential.ke;
 
             // u₀ = - sin Ωₖ cos Iₖ sin uₖ + cos Ωₖ cos uₖ

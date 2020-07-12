@@ -743,7 +743,9 @@ impl<'a> propagator::Constants<'a> {
                         argument_of_perigee: argument_of_perigee,
 
                         // M = p₂₉ + (δMₛ + δMₗ) + n₀" k₁ t²
-                        mean_anomaly: p29 + (solar_delta_mean_motion + lunar_delta_mean_motion) + self.orbit_0.mean_motion * self.k1 * t.powi(2),
+                        mean_anomaly: p29
+                            + (solar_delta_mean_motion + lunar_delta_mean_motion)
+                            + self.orbit_0.mean_motion * self.k1 * t.powi(2),
 
                         // n = kₑ / a³ᐟ²
                         mean_motion: self.geopotential.ke / a.powf(1.5),

@@ -12,14 +12,25 @@ We drew inspiration from the incomplete https://github.com/natronics/rust-sgp4 t
 
 ## Usage
 
+## Benchmarks
+
 ## Variables and expressions
 
-Each variable is used to store the result of one and only one expression. Most variables are immutable, with the exception of the four state variables used by the alogrithm's integrators.
+Each variable is used to store the result of one and only one expression. Most variables are immutable, with the exception of the variable `(E + ω)ᵢ` used to solve Kepler's equation and the state variables `tᵢ`, `nᵢ` and `λᵢ` used to integrate the resonance effects of Earth gravity.
 
-The following table lists all the variables used in the code and their associated mathematical symbol. Where possible, we used symbols from [[2]](#2). Sub-expressions without a name in [[2]](#2) follow the convention `kₙ, n ∈ ℕ` if they are shared between initialization and propagation, and `pₙ, n ∈ ℕ` if they are local to initialization or propagation.
+The following tables list the variables used in the code and their associated mathematical symbol. Where possible, we used symbols from [[2]](#2). Sub-expressions without a name in [[2]](#2) follow the convention `kₙ, n ∈ ℕ` if they are shared between initialization and propagation, and `pₙ, n ∈ ℕ` if they are local to initialization or propagation.
+
+The following expressions are constants or depend solely on epoch elements.
 
 | variable                                | symbol         | description |
 |:----------------------------------------|:---------------|:------------|
+| `Elements::datetime.year()`             | `yᵤ`           | Gregorian calendar year |
+| `Elements::datetime.month()`            | `mᵤ`           | Gregorian calendar month in the range `[1, 12]` |
+| `Elements::datetime.day()`              | `dᵤ`           | Gregorian calendar day in the range `[1, 31]` |
+| `Elements::datetime.hour()`             | `hᵤ`           | Hours since midnight in the range `[0, 23]` |
+| `Elements::datetime.minute()`           | `minᵤ`         | Minutes since the hour in the range `[0, 59]` |
+| `Elements::datetime.second()`           | `sᵤ`           | Seconds since the minute in the range `[0, 59]` |
+| `Elements::datetime.nanosecond()`       | `nsᵤ`          | Nanoseconds since the second in the range `[0, 10⁹[` |
 | `epoch`                                 | `y₂₀₀₀`        | Julian years since UTC 1 January 2000 12h00 (J2000) |
 | `d1900`                                 | `d₁₉₀₀`        | Julian days since UTC 1 January 1900 12h00 (J1900) |
 | `d1970`                                 | `d₁₉₇₀`        | Julian days since UTC 1 January 1970 12h00 (J1970) |
@@ -30,7 +41,7 @@ The following table lists all the variables used in the code and their associate
 | `geopotential.j3`                       | `J₃`           | un-normalised third zonal harmonic |
 | `geopotential.j4`                       | `J₄`           | un-normalised fourth zonal harmonic |
 | `kozai_mean_motion`                     | `n₀`           | mean number of orbits per day (Kozai convention) at epoch in rad.min⁻¹ |
-| `a1`                                    | `a₁`           | semimajor axis at epoch (Kozai convention) |
+| `a1`                                    | `a₁`           | semi-major axis at epoch (Kozai convention) |
 | `p0`                                    | `p₀`           | partial expression of `𝛿₀` and `𝛿₁` |
 | `d1`                                    | `𝛿₁`           | used in the Kozai to Brouwer conversion |
 | `d0`                                    | `𝛿₀`           | used in the Kozai to Brouwer conversion |
@@ -43,7 +54,7 @@ The following table lists all the variables used in the code and their associate
 | `orbit_0.mean_motion`                   | `n₀"`          | mean number of orbits per day (Brouwer convention) at epoch in rad.min⁻¹ |
 | `p1`                                    | `p₁`           | cosine of the inclination at epoch used in multiple expressions during initialization (`θ` in [[2]](#2), renamed to avoid confusion with the sidereal time) |
 | `p2`                                    | `p₂`           | partial expression of multiple initialization expressions |
-| `a0`                                    | `a₀"`          | semimajor axis at epoch (Brouwer convention) |
+| `a0`                                    | `a₀"`          | semi-major axis at epoch (Brouwer convention) |
 | `p3`                                    | `p₃`           | perigee in earth radii |
 | `p4`                                    | `p₄`           | height of perigee in km |
 | `p5`                                    | `p₅`           | partial expression of `s` |
@@ -63,7 +74,7 @@ The following table lists all the variables used in the code and their associate
 | `p14`                                   | `p₁₄`          | partial expression of multiple initialization expressions |
 | `p15`                                   | `p₁₅`          | partial expression of multiple initialization expressions |
 | `k14`                                   | `k₁₄`          | first order coefficient of the argument of perigee before adding solar and lunar perturbations |
-| `c4`                                    | `C₄`           | partial expression of multiple initializationa and propagation expressions, differs from the `C₄` constant in [[2]](#2) by a factor B* |
+| `c4`                                    | `C₄`           | partial expression of multiple initializationa and propagation expressions (differs from the `C₄` expression in [[2]](#2) by a factor B*) |
 | `right_ascension_dot`                   | `Ω̇`            | first order coefficient of the right ascension |
 | `argument_of_perigee_dot`               | `ω̇`            | first order coefficient of the argument of perigee |
 | `mean_anomaly_dot`                      | `Ṁ`            | first order coefficient of the mean anomaly |
@@ -72,13 +83,13 @@ The following table lists all the variables used in the code and their associate
 | `k2`                                    | `k₂`           | partial expression of `aᵧₙ` in near earth propagation |
 | `k3`                                    | `k₃`           | partial expression of `rₖ`, `ṙₖ` and `rḟₖ` in near earth propagation |
 | `k4`                                    | `k₄`           | partial expression of `uₖ` in near earth propagation |
-| `k5`                                    | `k₅`           | partial expression of `p38` in near earth propagation |
-| `k6`                                    | `k₆`           | partial expression of multiple initialization expressions and of `rₖ` in near earth propagation |
-| `d2`                                    | `D₂`           | partial expression of multiple near earth initialization expressions and of the semimajor axis in near earth propagation |
+| `k5`                                    | `k₅`           | partial expression of the initial Kepler variable `p₃₈` in near earth propagation |
+| `k6`                                    | `k₆`           | partial expression of multiple initialization expressions and of `rₖ` and `rḟₖ` in near earth propagation |
+| `d2`                                    | `D₂`           | partial expression of multiple near earth initialization expressions and of the semi-major axis in near earth propagation |
 | `p16`                                   | `p₁₆`          | partial expression of multiple near earth initialization expressions |
-| `d3`                                    | `D₃`           | partial expression of multiple near earth initialization expressions and of the semimajor axis in near earth propagation |
-| `d4`                                    | `D₄`           | partial expression of multiple near earth initialization expressions and of the semimajor axis in near earth propagation |
-| `c5`                                    | `C₅`           | partial expression of multiple initializationa and propagation expressions, differs from the `C₅` constant in [[2]](#2) by a factor B*
+| `d3`                                    | `D₃`           | partial expression of multiple near earth initialization expressions and of the semi-major axis in near earth propagation |
+| `d4`                                    | `D₄`           | partial expression of multiple near earth initialization expressions and of the semi-major axis in near earth propagation |
+| `c5`                                    | `C₅`           | partial expression of multiple initializationa and propagation expressions (differs from the `C₅` expression in [[2]](#2) by a factor B*)
 | `k7`                                    | `k₇`           | sine of the mean anomaly at epoch |
 | `k8`                                    | `k₈`           | partial expression of the mean anomaly third order coefficient in high altitude near earth propagation |
 | `k9`                                    | `k₉`           | partial expression of the mean anomaly fourth order coefficient in high altitude near earth propagation |
@@ -94,111 +105,119 @@ The following table lists all the variables used in the code and their associate
 | `lambda_0`                              | `λ₀`           | Earth gravity resonance variable at epoch |
 | `lambda_dot_0`                          | `λ̇₀`           | time derivative of the Earth gravity resonance variable at epoch |
 | `p17`                                   | `p₁₇`          | partial expression of `𝛿ᵣ₁`, `𝛿ᵣ₂` and `𝛿ᵣ₃` |
-| `dr1`                                   | `𝛿ᵣ₁`          | first Earth gravity resonance coefficient for geosynchronous satellites (`𝛿₁` in [[2]](#2), renamed to avoid confusion with `𝛿₁` used in the Kozai to Brouwer conversion) |
-| `dr2`                                   | `𝛿ᵣ₂`          | second Earth gravity resonance coefficient for geosynchronous satellites (`𝛿₂` in [[2]](#2), renamed to match `𝛿ᵣ₁`) |
-| `dr3`                                   | `𝛿ᵣ₃`          | third Earth gravity resonance coefficient for geosynchronous satellites (`𝛿₃` in [[2]](#2), renamed to match `𝛿ᵣ₁`) |
-| `p18`                                   | `p₁₈`          |
-| `p19`                                   | `p₁₉`          |
-| `p20`                                   | `p₂₀`          |
-| `p21`                                   | `p₂₁`          |
-| `f220`                                  | `F₂₂₀`         |
-| `g211`                                  | `G₂₁₁`         |
-| `g310`                                  | `G₃₁₀`         |
-| `g322`                                  | `G₃₂₂`         |
-| `g410`                                  | `G₄₁₀`         |
-| `g422`                                  | `G₄₂₂`         |
-| `g520`                                  | `G₅₂₀`         |
-| `g532`                                  | `G₅₃₂`         |
-| `g521`                                  | `G₅₂₁`         |
-| `g533`                                  | `G₅₃₃`         |
-| `d220₋1`                                | `D₂₂₀₋₁`       |
-| `d2211`                                 | `D₂₂₁₁`        |
-| `d3210`                                 | `D₃₂₁₀`        |
-| `d3222`                                 | `D₃₂₂₂`        |
-| `d4410`                                 | `D₄₄₁₀`        |
-| `d4422`                                 | `D₄₄₂₂`        |
-| `d5220`                                 | `D₅₂₂₀`        |
-| `d5232`                                 | `D₅₂₃₂`        |
-| `d5421`                                 | `D₅₄₂₁`        |
-| `d5433`                                 | `D₅₄₃₃`        |
-| `p22`                                   | `p₂₂`          |
-| `p23`                                   | `p₂₃`          |
-| `orbit.inclination`                     | `I`            |
-| `orbit.right_ascension`                 | `Ω`            |
-| `orbit.eccentricity`                    | `e`            |
-| `orbit.argument_of_perigee`             | `ω`            |
-| `orbit.mean_anomaly`                    | `M`            |
-| `orbit.mean_motion`                     | `n`            |
-| `a`                                     | `a`            |
-| `p32`                                   | `p₃₂`          |
-| `p33`                                   | `p₃₃`          |
-| `p34`                                   | `p₃₄`          |
-| `p35`                                   | `p₃₅`          |
-| `p36`                                   | `p₃₆`          |
-| `p37`                                   | `p₃₇`          |
-| `axn`                                   | `aₓₙ`          |
-| `ayn`                                   | `aᵧₙ`          |
-| `p38`                                   | `p₃₈`          | the initial Kepler equation parameter (`U` in [[2]](#2), renamed to avoid confusion with `u`) |
-| `ew`                                    | `(E + ω)ᵢ`     | mutable |
-| `delta `                                | `Δ(E + ω)ᵢ`    |
-| `p39`                                   | `p₃₉`          |
-| `pl`                                    | `pₗ`            |
-| `p40`                                   | `p₄₀`          |
-| `p41`                                   | `p₄₁`          |
-| `r`                                     | `r`            |
-| `r_dot`                                 | `ṙ`            |
-| `b`                                     | `β`            |
-| `p42`                                   | `p₄₂`          |
-| `p43`                                   | `p₄₃`          |
-| `p44`                                   | `p₄₄`          |
-| `u`                                     | `u`            |
-| `p45`                                   | `p₄₅`          |
-| `p46`                                   | `p₄₆`          |
-| `p47`                                   | `p₄₇`          |
-| `rk`                                    | `rₖ`           |
-| `uk`                                    | `uₖ`           |
-| `inclination_k`                         | `Iₖ`           |
-| `right_ascension_k`                     | `Ωₖ`           |
-| `rk_dot`                                | `ṙₖ`           |
-| `rfk_dot`                               | `rḟₖ`          |
-| `u0`                                    | `u₀`           |
-| `u1`                                    | `u₁`           |
-| `u2`                                    | `u₂`           |
-| `prediction.position[0]`                | `r₀`           |
-| `prediction.position[1]`                | `r₁`           |
-| `prediction.position[2]`                | `r₂`           |
-| `prediction.velocity[0]`                | `ṙ₀`           |
-| `prediction.velocity[1]`                | `ṙ₁`           |
-| `prediction.velocity[2]`                | `ṙ₂`           |
-| `p24`                                   | `p₂₄`          |
-| `p27`                                   | `p₂₇`          |
-| `p25`                                   | `p₂₅`          |
-| `p28`                                   | `p₂₈`          |
-| `p29`                                   | `p₂₉`          |
-| `p31`                                   | `p₃₁`          |
-| `sidereal_time`                         | `θ`            |
-| `delta_t`                               | `Δt`           |
-| `lambda_dot`                            | `λ̇ᵢ`           |
-| `ni_dot`                                | `ṅᵢ`           |
-| `ni_ddot`                               | `n̈ᵢ`           |
-| `ResonanceState::t`                     | `tᵢ`           | mutable |
-| `ResonanceState::mean_motion`           | `nᵢ`           | mutable |
-| `ResonanceState::lambda`                | `λᵢ`           | mutable |
-| `p30`                                   | `p₃₀`          |
+| `dr1`                                   | `𝛿ᵣ₁`          | first Earth gravity resonance coefficient for geosynchronous orbits (`𝛿₁` in [[2]](#2), renamed to avoid confusion with `𝛿₁` used in the Kozai to Brouwer conversion) |
+| `dr2`                                   | `𝛿ᵣ₂`          | second Earth gravity resonance coefficient for geosynchronous orbits (`𝛿₂` in [[2]](#2), renamed to match `𝛿ᵣ₁`) |
+| `dr3`                                   | `𝛿ᵣ₃`          | third Earth gravity resonance coefficient for geosynchronous orbits (`𝛿₃` in [[2]](#2), renamed to match `𝛿ᵣ₁`) |
+| `p18`                                   | `p₁₈`          | partial expression of `D₂₂₀₋₁` and `D₂₂₁₁` |
+| `p19`                                   | `p₁₉`          | partial expression of `D₃₂₁₀` and `D₃₂₂₂` |
+| `p20`                                   | `p₂₀`          | partial expression of `D₄₄₁₀` and `D₄₄₂₂` |
+| `p21`                                   | `p₂₁`          | partial expression of `D₅₂₂₀`, `D₅₂₃₂`, `D₅₄₂₁` and `D₅₄₃₃` |
+| `f220`                                  | `F₂₂₀`         | partial expression of `D₂₂₀₋₁` and `D₄₄₁₀` |
+| `g211`                                  | `G₂₁₁`         | partial expression of `D₂₂₁₁` |
+| `g310`                                  | `G₃₁₀`         | partial expression of `D₃₂₁₀` |
+| `g322`                                  | `G₃₂₂`         | partial expression of `D₃₂₂₂` |
+| `g410`                                  | `G₄₁₀`         | partial expession of `D₄₄₁₀` |
+| `g422`                                  | `G₄₂₂`         | partial expession of `D₄₄₂₂` |
+| `g520`                                  | `G₅₂₀`         | partial expression of `D₅₂₂₀` |
+| `g532`                                  | `G₅₃₂`         | partial expression of `D₅₂₃₂` |
+| `g521`                                  | `G₅₂₁`         | partial expression of `D₅₄₂₁` |
+| `g533`                                  | `G₅₃₃`         | partial expression of `D₅₄₃₃` |
+| `d220₋1`                                | `D₂₂₀₋₁`       | gravity resonance coefficient for Molniya orbits (the `Dₗₘₚₖ` expression in [[2]](#2) is missing a factor `l - 2p + k` from the original equation in [[4]](#4), and `k` needs to be `-1` instead of `1`) |
+| `d2211`                                 | `D₂₂₁₁`        | gravity resonance coefficient for Molniya orbits (the `Dₗₘₚₖ` expression in [[2]](#2) is missing a factor `l - 2p + k` from the original equation in [[4]](#4)) |
+| `d3210`                                 | `D₃₂₁₀`        | see `D₂₂₁₁` |
+| `d3222`                                 | `D₃₂₂₂`        | see `D₂₂₁₁` |
+| `d4410`                                 | `D₄₄₁₀`        | see `D₂₂₁₁` |
+| `d4422`                                 | `D₄₄₂₂`        | see `D₂₂₁₁` |
+| `d5220`                                 | `D₅₂₂₀`        | see `D₂₂₁₁` |
+| `d5232`                                 | `D₅₂₃₂`        | see `D₂₂₁₁` |
+| `d5421`                                 | `D₅₄₂₁`        | see `D₂₂₁₁` |
+| `d5433`                                 | `D₅₄₃₃`        | see `D₂₂₁₁` |
 
-The contribution of the sun and the moon to the orbital elements are calculated with a unique set of expressions. *src/third_body.rs* provides a generic implementation of these expressions. Variables specific to the third body (either the sun or the moon) are annotated with `x`. In every other file, these variables are annotated with `s` if they correspond to solar perturbations, and `l` if they correspond to lunar perturbations.
-
-The `aₓₙ`, `Xₓₙ`, `Zₓₙ` (`n ∈ ℕ`), `Fₓ₂` and `Fₓ₃` expressions correspond to the `aₙ`, `Xₙ`, `Zₙ`, `F₂` and `F₃` expressions in [[2]](#2). The added `x` highlights the dependence on the perturbing third body.
+The following expressions depend on the propagation time `t`.
 
 | variable                                | symbol         | description |
 |:----------------------------------------|:---------------|:------------|
-| `third_body_inclination_sine`           | `sin Iₓ`       | sine of the inclination of either the sun (`sin Iₛ`) or the moon (`sin Iₗ`) |
-| `third_body_inclination_cosine`         | `cos Iₓ`       | cosine of the inclination of either the sun (`cos Iₛ`) or the moon (`cos Iₗ`) |
-| `delta_right_ascension_sine`            | `sin(Ω₀ - Ωₓ)` | sine of the difference between the right ascension of the ascending node of the satellite at epoch and the sun's (`sin(Ω₀ - Ωₛ)`) or the moon's (`sin(Ω₀ - Ωₗ)`) |
-| `delta_right_ascension_cosine`          | `cos(Ω₀ - Ωₓ)` | cosine of the difference between the right ascension of the ascending node of the satellite at epoch and the sun's (`cos(Ω₀ - Ωₛ)`) or the moon's (`cos(Ω₀ - Ωₗ)`) |
-| `third_body_argument_of_perigee_sine`   | `sin ωₓ`       | sine of the argument of perigee of the sun (`sin ωₛ`) or the moon (`sin ωₗ`) |
-| `third_body_argument_of_perigee_cosine` | `cos ωₓ`       | cosine of the argument of perigee of the sun (`sin ωₛ`) or the moon (`cos ωₗ`) |
-| `third_body_mean_anomaly_0`             | `Mₓ₀`          | mean anomaly at epoch of the sun (`Mₛ₀`) or the moon (`Mₗ₀`) |
+| `t`                                     | `t`            | minutes elapsed since epoch (can be negative) |
+| `p22`                                   | `p₂₂`          | right ascension of the ascending node with neither Earth gravity resonance nor Sun and Moon contributions |
+| `p23`                                   | `p₂₃`          | argument of perigee with neither high altitude drag effects, Earth gravity resonance nor Sun and Moon contributions |
+| `orbit.inclination`                     | `I`            | inclination at epoch plus `t` without the short-period effects of Earth gravity |
+| `orbit.right_ascension`                 | `Ω`            | right ascension of the ascending node at epoch plus `t` without the short-period effects of Earth gravity |
+| `orbit.eccentricity`                    | `e`            | eccentricity at epoch plus `t` without the short-period effects of Earth gravity |
+| `orbit.argument_of_perigee`             | `ω`            | argument of perigee at epoch plus `t` without the short-period effects of Earth gravity |
+| `orbit.mean_anomaly`                    | `M`            | mean anomaly at epoch plus `t` without the short-period effects of Earth gravity |
+| `orbit.mean_motion`                     | `n`            | mean motion at epoch plus `t` without the short-period effects of Earth gravity |
+| `a`                                     | `a`            | semi-major axis |
+| `p32`                                   | `p₃₂`          | partial expression of `aᵧₙ` |
+| `p33`                                   | `p₃₃`          | partial expression of `rₖ`, `ṙₖ` and `rḟₖ` |
+| `p34`                                   | `p₃₄`          | partial expression of `uₖ` |
+| `p35`                                   | `p₃₅`          | partial expression of the initial Kepler variable `p₃₈` |
+| `p36`                                   | `p₃₆`          | partial expression of `rₖ` and `rḟₖ` |
+| `p37`                                   | `p₃₇`          | partial expression of `aᵧₙ` and the initial Kepler variable `p₃₈` |
+| `axn`                                   | `aₓₙ`          | normalized linear eccentricity projected on the line of nodes |
+| `ayn`                                   | `aᵧₙ`          | normalized linear eccentricity projected on the normal to the line of nodes |
+| `p38`                                   | `p₃₈`          | initial Kepler variable (`U` in [[2]](#2), renamed to avoid confusion with the true anomaly plus argument of perigee `u`) |
+| `ew`                                    | `(E + ω)ᵢ`     | Kepler variable used in an iterative process to estimate the eccentric anomaly `E` |
+| `delta `                                | `Δ(E + ω)ᵢ`    | correction to the Kepler variable at iteration `i` |
+| `p39`                                   | `p₃₉`          | eccentricity at epoch plus `t` |
+| `pl`                                    | `pₗ`            | semi-latus rectum |
+| `p40`                                   | `p₄₀`          | normalized linear eccentricity projected on the semi-minor axis |
+| `r`                                     | `r`            | radius (distance to the focus) without the short-period effects of Earth gravity |
+| `r_dot`                                 | `ṙ`            | radius time derivative without the short-period effects of Earth gravity |
+| `b`                                     | `β`            | semi-minor axis over semi-major axis |
+| `p41`                                   | `p₄₁`          | partial expression of `p₄₂` and `p₄₃` |
+| `p42`                                   | `p₄₂`          | sine of `u` |
+| `p43`                                   | `p₄₃`          | cosine of `u` |
+| `u`                                     | `u`            | true anomaly plus argument of perigee without the short-period effects of Earth gravity |
+| `p44`                                   | `p₄₄`          | `sin(2 u)`, partial expression of `uₖ`, `Ωₖ` and `ṙₖ` |
+| `p45`                                   | `p₄₅`          | `cos(2 u)`, partial expression of `rₖ`, `Iₖ` and `rḟₖ` |
+| `p46`                                   | `p₄₆`          | partial expression of `rₖ`, `uₖ`, `Iₖ` and `Ωₖ` |
+| `rk`                                    | `rₖ`           | radius (distance to the focus) |
+| `uk`                                    | `uₖ`           | true anomaly plus argument of perigee |
+| `inclination_k`                         | `Iₖ`           | inclination at epoch plus `t`
+| `right_ascension_k`                     | `Ωₖ`           | right ascension at epoch plus `t`
+| `rk_dot`                                | `ṙₖ`           | radius time derivative (@DEV orthogonal speed) |
+| `rfk_dot`                               | `rḟₖ`          | radius times the true anomaly derivative (@DEV non-orthogonal speed) |
+| `u0`                                    | `u₀`           | x component of the position unit vector |
+| `u1`                                    | `u₁`           | y component of the position unit vector |
+| `u2`                                    | `u₂`           | z component of the position unit vector |
+| `prediction.position[0]`                | `r₀`           | x component of the position vector |
+| `prediction.position[1]`                | `r₁`           | y component of the position vector |
+| `prediction.position[2]`                | `r₂`           | z component of the position vector |
+| `prediction.velocity[0]`                | `ṙ₀`           | x component of the velocity vector |
+| `prediction.velocity[1]`                | `ṙ₁`           | y component of the velocity vector |
+| `prediction.velocity[2]`                | `ṙ₂`           | z component of the velocity vector |
+| `p24`                                   | `p₂₄`          | mean anomaly without drag contributions in near earth propagation |
+| `p25`                                   | `p₂₅`          | partial expression of `ω` and `M` in near earth propagation |
+| `p26`                                   | `p₂₆`          | mean anomaly with elliptic correction and without drag contributions in near earth propagation |
+| `p27`                                   | `p₂₇`          | non-clamped eccentricity in near earth propagation |
+| `p28`                                   | `p₂₈`          | semi-major axis with resonance correction in deep space propagation |
+| `p29`                                   | `p₂₉`          | mean anomaly with resonance correction in deep space propagation |
+| `p31`                                   | `p₃₁`          | non-clamped eccentricity in deep space propagation |
+| `sidereal_time`                         | `θ`            | sidereal time at epoch plus `t` |
+| `delta_t`                               | `Δt`           | time step used in the integration of resonance effects of Earth gravity in min (either `720` or `-720`) |
+| `lambda_dot`                            | `λ̇ᵢ`           | resonance effects of Earth gravity variable's time derivative at epoch plus `i Δt` |
+| `ni_dot`                                | `ṅᵢ`           | mean motion time derivative at epoch plus `i Δt` |
+| `ni_ddot`                               | `n̈ᵢ`           | mean motion second time derivative at epoch plus `i Δt` |
+| `ResonanceState::t`                     | `tᵢ`           | resonance effects of Earth gravity integrator time (`i Δt`) |
+| `ResonanceState::mean_motion`           | `nᵢ`           | mean motion time derivative at epoch plus `Δt i` |
+| `ResonanceState::lambda`                | `λᵢ`           | resonance effects of Earth gravity variable at epoch plus `i Δt` |
+| `p30`                                   | `p₃₀`          | non-normalised `Ω` in Lyddane deep space propagation |
+
+The contribution of the Sun and the Moon to the orbital elements are calculated with a unique set of expressions. *src/third_body.rs* provides a generic implementation of these expressions. Variables specific to the third body (either the Sun or the Moon) are annotated with `x`. In every other file, these variables are annotated with `s` if they correspond to solar perturbations, and `l` if they correspond to lunar perturbations.
+
+The `aₓₙ`, `Xₓₙ`, `Zₓₙ` (`n ∈ ℕ`), `Fₓ₂` and `Fₓ₃` expressions correspond to the `aₙ`, `Xₙ`, `Zₙ`, `F₂` and `F₃` expressions in [[2]](#2). The added `x` highlights the dependence on the perturbing third body.
+
+The following expressions are constants or depend solely on epoch elements.
+
+| variable                                | symbol         | description |
+|:----------------------------------------|:---------------|:------------|
+| `third_body_inclination_sine`           | `sin Iₓ`       | sine of the inclination of the Sun (`sin Iₛ`) or the Moon (`sin Iₗ`) |
+| `third_body_inclination_cosine`         | `cos Iₓ`       | cosine of the inclination of the Sun (`cos Iₛ`) or the Moon (`cos Iₗ`) |
+| `delta_right_ascension_sine`            | `sin(Ω₀ - Ωₓ)` | sine of the difference between the right ascension of the ascending node of the satellite at epoch and the Sun's (`sin(Ω₀ - Ωₛ)`) or the Moon's (`sin(Ω₀ - Ωₗ)`) |
+| `delta_right_ascension_cosine`          | `cos(Ω₀ - Ωₓ)` | cosine of the difference between the right ascension of the ascending node of the satellite at epoch and the Sun's (`cos(Ω₀ - Ωₛ)`) or the Moon's (`cos(Ω₀ - Ωₗ)`) |
+| `third_body_argument_of_perigee_sine`   | `sin ωₓ`       | sine of the argument of perigee of the Sun (`sin ωₛ`) or the Moon (`sin ωₗ`) |
+| `third_body_argument_of_perigee_cosine` | `cos ωₓ`       | cosine of the argument of perigee of the Sun (`sin ωₛ`) or the Moon (`cos ωₗ`) |
+| `third_body_mean_anomaly_0`             | `Mₓ₀`          | mean anomaly at epoch of the Sun (`Mₛ₀`) or the Moon (`Mₗ₀`) |
 | `ax1`                                   | `aₓ₁`          | partial expression of multiple `Xₓₙ` and `Zₓₙ` expressions |
 | `ax3`                                   | `aₓ₃`          | partial expression of multiple `Xₓₙ` and `Zₓₙ` expressions |
 | `ax7`                                   | `aₓ₇`          | partial expression of multiple `aₓ₂` and `aₓ₅` |
@@ -242,41 +261,66 @@ The `aₓₙ`, `Xₓₙ`, `Zₓₙ` (`n ∈ ℕ`), `Fₓ₂` and `Fₓ₃` expre
 | `kx9`                                   | `kₓ₉`          | `sin fₓ` coefficient of `pₓ₄` |
 | `kx10`                                  | `kₓ₁₀`         | `Fₓ₂` coefficient of `pₓ₅` |
 | `kx11`                                  | `kₓ₁₁`         | `Fₓ₃` coefficient of `pₓ₅` |
-| `third_body_dots.inclination`           | `İₓ`           | secular contribution of the sun (`İₛ`) or the moon (`İₗ`) to the inclination |
-| `third_body_right_ascension_dot`        | `Ω̇ₓ`           | secular contribution of the sun (`Ω̇ₛ`) or the moon (`Ω̇ₗ`) to the right ascension of the ascending node |
-| `third_body_dots.eccentricity`          | `ėₓ`           | secular contribution of the sun (`ėₛ`) or the moon (`ėₗ`) to the eccentricity |
-| `third_body_dots.agument_of_perigee`    | `ω̇ₓ`           | secular contribution of the sun (`ω̇ₛ`) or the moon (`ω̇ₗ`) to the argument of perigee |
-| `third_body_dots.mean_anomaly`          | `Ṁₓ`           | secular contribution of the sun (`Ṁₛ`) or the moon (`Ṁₗ`) to the mean anomaly |
-| `third_body_mean_anomaly`               | `Mₓ`           | mean anomaly of the sun (`Mₛ`) or the moon (`Mₗ`) |
+| `third_body_dots.inclination`           | `İₓ`           | secular contribution of the Sun (`İₛ`) or the Moon (`İₗ`) to the inclination |
+| `third_body_right_ascension_dot`        | `Ω̇ₓ`           | secular contribution of the Sun (`Ω̇ₛ`) or the Moon (`Ω̇ₗ`) to the right ascension of the ascending node |
+| `third_body_dots.eccentricity`          | `ėₓ`           | secular contribution of the Sun (`ėₛ`) or the Moon (`ėₗ`) to the eccentricity |
+| `third_body_dots.agument_of_perigee`    | `ω̇ₓ`           | secular contribution of the Sun (`ω̇ₛ`) or the Moon (`ω̇ₗ`) to the argument of perigee |
+| `third_body_dots.mean_anomaly`          | `Ṁₓ`           | secular contribution of the Sun (`Ṁₛ`) or the Moon (`Ṁₗ`) to the mean anomaly |
+
+The following expressions depend on the propagation time `t`.
+
+| variable                                | symbol         | description |
+|:----------------------------------------|:---------------|:------------|
+| `third_body_mean_anomaly`               | `Mₓ`           | mean anomaly of the Sun (`Mₛ`) or the Moon (`Mₗ`) |
 | `fx`                                    | `fₓ`           | third body true anomaly |
-| `fx2`                                   | `Fₓ₂`          | partial expression of all long-period periodic effects |
-| `fx3`                                   | `Fₓ₃`          | partial expression of all long-period periodic effects |
-| `third_body_delta_eccentricity`         | `δeₓ`          | long-period periodic contribution of the sun (`δeₛ`) or the moon (`δeₗ`) to the eccentricity |
-| `third_body_delta_inclination`          | `δIₓ`          | long-period periodic contribution of the sun (`δIₛ`) or the moon (`δIₗ`) to the inclination |
-| `third_body_delta_mean_mootion`         | `δMₓ`          | long-period periodic contribution of the sun (`δMₛ`) or the moon (`δMₗ`) to the mean motion |
-| `px4`                                   | `pₓ₄`          | partial expression of the long-period periodic contribution of the sun (`pₛ₄`) or the moon (`pₗ₄`) to the right ascension of the ascending node and the argument of perigee |
-| `px5`                                   | `pₓ₅`          | partial expression of the long-period periodic contribution of the sun (`pₛ₅`) or the moon (`pₗ₅`) to the right ascension of the ascending node |
+| `fx2`                                   | `Fₓ₂`          | partial expression of the third body long-period periodic contribution |
+| `fx3`                                   | `Fₓ₃`          | partial expression of the third body long-period periodic contribution |
+| `third_body_delta_eccentricity`         | `δeₓ`          | long-period periodic contribution of the Sun (`δeₛ`) or the Moon (`δeₗ`) to the eccentricity |
+| `third_body_delta_inclination`          | `δIₓ`          | long-period periodic contribution of the Sun (`δIₛ`) or the Moon (`δIₗ`) to the inclination |
+| `third_body_delta_mean_mootion`         | `δMₓ`          | long-period periodic contribution of the Sun (`δMₛ`) or the Moon (`δMₗ`) to the mean motion |
+| `px4`                                   | `pₓ₄`          | partial expression of the long-period periodic contribution of the Sun (`pₛ₄`) or the Moon (`pₗ₄`) to the right ascension of the ascending node and the argument of perigee |
+| `px5`                                   | `pₓ₅`          | partial expression of the long-period periodic contribution of the Sun (`pₛ₅`) or the Moon (`pₗ₅`) to the right ascension of the ascending node |
 
 ### Mathematical expressions
 
-1. [Common initialization](#common-initialization)
-2. [Near earth initialization](#near-earth-initialization)
-3. [High altitude near earth initialization](#high-altitude-near-earth-initialization)
-4. [Elliptic high altitude near earth initialization](#elliptic-high-altitude-near-earth-initialization)
-5. [Deep space initialization](#deep-space-initialization)
-6. [Third body perturbations](#third-body-perturbations)
-7. [Resonant deep space initialization](#resonant-deep-space-initialization)
-8. [Geosynchronous deep space initialization](#geosynchronous-deep-space-initialization)
-9. [Molniya deep space initialization](#molniya-deep-space-initialization)
-10. [Common propagation](#common-propagation)
-11. [Near earth propagation](#near-earth-propagation)
-12. [High altitude near earth propagation](#high-altitude-near-earth-propagation)
-13. [Deep space propagation](#deep-space-propagation)
-14. [Third body propagation](#third-body-propagation)
-15. [Resonant deep space propagation](#resonant-deep-space-propagation)
-16. [Lyddane deep space propagation](#lyddane-deep-space-propagation)
+1. [UT1 to Julian conversion](#ut1-to-julian-conversion)
+2. [Common initialization](#common-initialization)
+3. [Near earth initialization](#near-earth-initialization)
+4. [High altitude near earth initialization](#high-altitude-near-earth-initialization)
+5. [Elliptic high altitude near earth initialization](#elliptic-high-altitude-near-earth-initialization)
+6. [Deep space initialization](#deep-space-initialization)
+7. [Third body perturbations](#third-body-perturbations)
+8. [Resonant deep space initialization](#resonant-deep-space-initialization)
+9. [Geosynchronous deep space initialization](#geosynchronous-deep-space-initialization)
+10. [Molniya deep space initialization](#molniya-deep-space-initialization)
+11. [Common propagation](#common-propagation)
+12. [Near earth propagation](#near-earth-propagation)
+13. [High altitude near earth propagation](#high-altitude-near-earth-propagation)
+14. [Deep space propagation](#deep-space-propagation)
+15. [Third body propagation](#third-body-propagation)
+16. [Resonant deep space propagation](#resonant-deep-space-propagation)
+17. [Lyddane deep space propagation](#lyddane-deep-space-propagation)
 
 ---
+
+#### UT1 to Julian conversion
+The epoch (Julian years since UTC 1 January 2000 12h00) can be calculated with either the AFSPC formula:
+```
+y₂₀₀₀ = (367 yᵤₜ₁ - ⌊7 (yᵤₜ₁ + ⌊(mᵤₜ₁ + 9) / 12⌋) / 4⌋ + 275 ⌊mᵤₜ₁ / 9⌋ + dᵤₜ₁
+        + 1721013.5
+        + hᵤₜ₁ / 24
+        + minᵤₜ₁ / (24 × 60)
+        + sᵤₜ₁ / (24 × 60 × 60)
+        + nsᵤₜ₁ / (24 × 60 × 60 × 10⁹)
+        - 2451545)
+        / 365.25
+```
+or the more accurate version of the same formula:
+```
+y₂₀₀₀ = (367 yᵤₜ₁ - ⌊7 (yᵤₜ₁ + ⌊(mᵤₜ₁ + 9) / 12⌋) / 4⌋ + 275 ⌊mᵤₜ₁ / 9⌋ + dᵤₜ₁ - 730531) / 365.25
+        + (3600 hᵤₜ₁ + 60 minᵤₜ₁ + sᵤₜ₁ - 43200) / (24 × 60 × 60 × 365.25)
+        + nsᵤₜ₁ / (24 × 60 × 60 × 365.25 × 10⁹)
+```
 
 #### Common initialization
 ```
@@ -460,7 +504,7 @@ Mₗ₀ = (-1.1151842 + 0.228027132 e₁₉₀₀) rem 2π
 #### Third body perturbations
 Defined only if `n₀" ≤ 2π / 225` (deep space).
 
-The following variables are evaluated for two third bodies, the sun (solar perturbations `s`) and the moon (lunar perturbations `l`). Variables specific to the third body are annotated with `x`. In other sections, `x` is either `s` or `l`.
+The following variables are evaluated for two third bodies, the Sun (solar perturbations `s`) and the Moon (lunar perturbations `l`). Variables specific to the third body are annotated with `x`. In other sections, `x` is either `s` or `l`.
 ```
 aₓ₁ = cos ωₓ cos(Ω₀ - Ωₓ) + sin ωₓ cos Iₓ sin(Ω₀ - Ωₓ)
 
@@ -772,43 +816,41 @@ p₃₉ = aₓₙ² + aᵧₙ²
 
 pₗ = a (1 - p₃₉)
 
-p₄₀ = aₓₙ cos(E + ω) + aᵧₙ sin(E + ω)
+p₄₀ = aₓₙ sin(E + ω) - aᵧₙ cos(E + ω)
 
-p₄₁ = aₓₙ sin(E + ω) - aᵧₙ cos(E + ω)
+r = a (1 - (aₓₙ cos(E + ω) + aᵧₙ sin(E + ω)))
 
-r = a (1 - p₄₀)
-
-ṙ = a¹ᐟ² p₄₁ / r
+ṙ = a¹ᐟ² p₄₀ / r
 
 β = (1 - p₃₉)¹ᐟ²
 
-p₄₂ = p₄₁ / (1 + β)
+p₄₁ = p₄₀ / (1 + β)
 
-p₄₃ = a / r (sin(E + ω) - aᵧₙ - aₓₙ p₄₂)
+p₄₂ = a / r (sin(E + ω) - aᵧₙ - aₓₙ p₄₁)
 
-p₄₄ = a / r (cos(E + ω) - aₓₙ + aᵧₙ p₄₂)
+p₄₃ = a / r (cos(E + ω) - aₓₙ + aᵧₙ p₄₁)
 
-          p₄₃
+          p₄₂
 u = tan⁻¹ ---
-          p₄₄
+          p₄₃
 
-p₄₅ = 2 p₄₄ p₄₃
+p₄₄ = 2 p₄₃ p₄₂
 
-p₄₆ = 1 - 2 p₄₃²
+p₄₅ = 1 - 2 p₄₂²
 
-p₄₇ = (¹/₂ J₂ / pₗ) / pₗ
+p₄₆ = (¹/₂ J₂ / pₗ) / pₗ
 
-rₖ = r (1 - ³/₂ p₄₇ β p₃₆) + ¹/₂ (¹/₂ J₂ / pₗ) p₃₃ p₄₆
+rₖ = r (1 - ³/₂ p₄₆ β p₃₆) + ¹/₂ (¹/₂ J₂ / pₗ) p₃₃ p₄₅
 
-uₖ = u - ¹/₄ p₄₇ p₃₄ p₄₅
+uₖ = u - ¹/₄ p₄₆ p₃₄ p₄₄
 
-Ωₖ = Ω + ³/₂ p₄₇ cos I p₄₅
+Ωₖ = Ω + ³/₂ p₄₆ cos I p₄₄
 
-Iₖ = I + ³/₂ p₄₇ cos I sin I p₄₆
+Iₖ = I + ³/₂ p₄₆ cos I sin I p₄₅
 
 ṙₖ = ṙ + n (¹/₂ J₂ / pₗ) p₃₃ / kₑ
 
-rḟₖ = pₗ¹ᐟ² / r + n (¹/₂ J₂ / pₗ) (p₃₃ p₄₆ + ³/₂ p₃₆) / kₑ
+rḟₖ = pₗ¹ᐟ² / r + n (¹/₂ J₂ / pₗ) (p₃₃ p₄₅ + ³/₂ p₃₆) / kₑ
 
 u₀ = - sin Ωₖ cos Iₖ sin uₖ + cos Ωₖ cos uₖ
 
@@ -869,7 +911,7 @@ p₃₁ = e₀ + ė t - C₄ t
 #### Third body propagation
 Defined only if `n₀" ≤ 2π / 225` (deep space).
 
-The following variables are evaluated for two third bodies, the sun (solar perturbations `s`) and the moon (lunar perturbations `l`). Variables specific to the third body are annotated with `x`. In other sections, `x` is either `s` or `l`.
+The following variables are evaluated for two third bodies, the Sun (solar perturbations `s`) and the Moon (lunar perturbations `l`). Variables specific to the third body are annotated with `x`. In other sections, `x` is either `s` or `l`.
 ```
 Mₓ = Mₓ₀ + nₓ t
 

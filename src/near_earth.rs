@@ -207,9 +207,8 @@ impl<'a> propagator::Constants<'a> {
                 (
                     argument_of_perigee,
                     // M = p₂₆ + n₀" (k₁ t² + k₈ t³ + t⁴ (k₉ + t k₁₀)
-                    p26
-                        + self.orbit_0.mean_motion
-                            * (self.k1 * t.powi(2) + k8 * t.powi(3) + t.powi(4) * (k9 + t * k10)),
+                    p26 + self.orbit_0.mean_motion
+                        * (self.k1 * t.powi(2) + k8 * t.powi(3) + t.powi(4) * (k9 + t * k10)),
                     // a = a₀" (1 - C₁ t - D₂ t² - D₃ t³ - D₄ t⁴)²
                     a0 * (1.0 - self.c1 * t - d2 * t.powi(2) - d3 * t.powi(3) - d4 * t.powi(4))
                         .powi(2),

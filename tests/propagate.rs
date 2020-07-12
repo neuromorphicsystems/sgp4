@@ -6,11 +6,12 @@ use test_cases::*;
 fn propagate() -> sgp4::Result<()> {
     let test_cases: TestCases = toml::from_str(include_str!("../test_cases.toml")).unwrap();
     for test_case in test_cases.list.iter() {
-        let constants = sgp4::Constants::from_tle_afspc_compatibility_mode(&sgp4::tle::parse(
-            None,
-            test_case.line1.as_bytes(),
-            test_case.line2.as_bytes(),
-        )?)?;
+        let constants =
+            sgp4::Constants::from_elements_afspc_compatibility_mode(&sgp4::Elements::from_tle(
+                None,
+                test_case.line1.as_bytes(),
+                test_case.line2.as_bytes(),
+            )?)?;
         for state in &test_case.states {
             match state {
                 State::Ok {
