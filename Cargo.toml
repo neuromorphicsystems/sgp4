@@ -1,6 +1,6 @@
 [package]
 name = "sgp4"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["International Centre for Neuromorphic Systems", "Alexandre Marcireau"]
 description = "A pure Rust implementation of the SGP4 algorithm for satellite propagation"
 homepage = "https://github.com/neuromorphicsystems/sgp4/"
