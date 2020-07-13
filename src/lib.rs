@@ -7,7 +7,7 @@
 //!
 //! # Example
 //!
-//! The following standalone program pulls the lastest "stations" OMMs from Celestrak
+//! The following standalone program downloads the lastest stations OMMs from Celestrak
 //! and predicts the stations' positions and velocities after 12 h and 24 h.
 //!
 //! ```
