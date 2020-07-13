@@ -1,20 +1,107 @@
+//! This crate implements the SGP4 algorithm for satellite propagation.
+//!
+//! It also provides methods to parse both Two-Line Element Set (TLE) and Orbit Mean-Elements Message (OMM) data.
+//!
+//! Several examples can be found in the repository [https://github.com/neuromorphicsystems/sgp4](https://github.com/neuromorphicsystems/sgp4).
+//!
+//! # Example
+//!
+//! The following standalone program pulls the lastest "stations" OMMs from Celestrak
+//! and predicts the stations' positions and velocities after 12 h and 24 h.
+//!
+//! ```
+//! fn main() -> sgp4::Result<()> {
+//!     let response = ureq::get("https://celestrak.com/NORAD/elements/gp.php")
+//!         .query("GROUP", "stations")
+//!         .query("FORMAT", "json")
+//!         .call();
+//!     if response.error() {
+//!         Err(sgp4::Error::new(format!(
+//!             "network error {}: {}",
+//!             response.status(),
+//!             response.into_string()?
+//!         )))
+//!     } else {
+//!         let elements_group: Vec<sgp4::Elements> = response.into_json_deserialize()?;
+//!         for elements in &elements_group {
+//!             println!("{}", elements.object_name.as_ref().unwrap());
+//!             let constants = sgp4::Constants::from_elements(elements)?;
+//!             for hours in &[12, 24] {
+//!                 println!("    t = {} min", hours * 60);
+//!                 let prediction = constants.propagate((hours * 60) as f64)?;
+//!                 println!("        r = {:?} km", prediction.position);
+//!                 println!("        ṙ = {:?} km.s⁻¹", prediction.velocity);
+//!             }
+//!         }
+//!         Ok(())
+//!     }
+//! }
+//! ```
+//! More examples can be found in the repository [https://github.com/neuromorphicsystems/sgp4/tree/master/examples](https://github.com/neuromorphicsystems/sgp4/tree/master/examples).
+//!
+
 mod deep_space;
-pub mod gp;
-pub mod model;
+mod gp;
+mod model;
 mod near_earth;
 mod propagator;
 mod third_body;
 
+pub use deep_space::ResonanceState;
+pub use gp::parse_2les;
+pub use gp::parse_3les;
 pub use gp::Elements;
+pub use gp::Error;
+pub use gp::Result;
+pub use model::afspc_epoch_to_sidereal_time;
+pub use model::iau_epoch_to_sidereal_time;
+pub use model::Geopotential;
+pub use model::WGS72;
+pub use model::WGS84;
 pub use propagator::Constants;
-pub use propagator::Error;
 pub use propagator::Orbit;
 pub use propagator::Prediction;
-pub use propagator::Result;
 
 impl Orbit {
+    /// Creates a new Brouwer orbit representation from Kozai elements
+    ///
+    /// If the Kozai orbital elements are obtained from a TLE or OMM,
+    /// the convenience function [sgp4::Constants::from_elements](struct.Constants.html#method.from_elements)
+    /// can be used instead of manually mapping the `Elements` fields to the `Constants::new` parameters.
+    ///
+    /// # Arguments
+    ///
+    /// * `geopotential` - The model of Earth gravity to use in the conversion
+    /// * `inclination` - Angle between the equator and the orbit plane in rad
+    /// * `right_ascension` - Angle between vernal equinox and the point where the orbit crosses the equatorial plane in rad
+    /// * `eccentricity` - The shape of the orbit
+    /// * `argument_of_perigee` - Angle between the ascending node and the orbit's point of closest approach to the earth in rad
+    /// * `mean_anomaly` - Angle of the satellite location measured from perigee in rad
+    /// * `kozai_mean_motion` - Mean orbital angular velocity in rad.min⁻¹ (Kozai convention)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> sgp4::Result<()> {
+    /// let elements = sgp4::Elements::from_tle(
+    ///     Some("ISS (ZARYA)".to_owned()),
+    ///     "1 25544U 98067A   20194.88612269 -.00002218  00000-0 -31515-4 0  9992".as_bytes(),
+    ///     "2 25544  51.6461 221.2784 0001413  89.1723 280.4612 15.49507896236008".as_bytes(),
+    /// )?;
+    /// let orbit_0 = sgp4::Orbit::from_kozai_elements(
+    ///     &sgp4::WGS84,
+    ///     elements.inclination * (std::f64::consts::PI / 180.0),
+    ///     elements.right_ascension * (std::f64::consts::PI / 180.0),
+    ///     elements.eccentricity,
+    ///     elements.argument_of_perigee * (std::f64::consts::PI / 180.0),
+    ///     elements.mean_anomaly * (std::f64::consts::PI / 180.0),
+    ///     elements.mean_motion * (std::f64::consts::PI / 720.0),
+    /// )?;
+    /// #     Ok(())
+    /// # }
+    /// ```
     pub fn from_kozai_elements(
-        geopotential: &model::Geopotential,
+        geopotential: &Geopotential,
         inclination: f64,
         right_ascension: f64,
         eccentricity: f64,
@@ -23,7 +110,9 @@ impl Orbit {
         kozai_mean_motion: f64,
     ) -> Result<Self> {
         if kozai_mean_motion <= 0.0 {
-            Err(Error::new("the Kozai mean motion must be positive"))
+            Err(Error::new(
+                "the Kozai mean motion must be positive".to_owned(),
+            ))
         } else {
             let mean_motion = {
                 // a₁ = (kₑ / n₀)²ᐟ³
@@ -49,9 +138,11 @@ impl Orbit {
                 kozai_mean_motion / (1.0 + d0)
             };
             if mean_motion <= 0.0 {
-                Err(Error::new("the Brouwer mean motion must be positive"))
+                Err(Error::new(
+                    "the Brouwer mean motion must be positive".to_owned(),
+                ))
             } else {
-                Ok(Orbit {
+                Ok(propagator::Orbit {
                     inclination: inclination,
                     right_ascension: right_ascension,
                     eccentricity: eccentricity,
@@ -64,27 +155,59 @@ impl Orbit {
     }
 }
 
-// geopotential: the gravity model to use in calculations
-// epoch: years since UTC 1 January 2000 12h00 t₀
-// drag_term: the radiation pressure coefficient B*, in earth radii⁻¹
-// inclination_0: the angle between the equator and the orbit plane I₀, in rad
-// right_ascension: the angle between vernal equinox and the point where
-//                  the orbit crosses the equatorial plane Ω₀, in rad
-// eccentricity_0: the shape of the orbit e₀
-// argument_of_perigee: the angle between the ascending node and the orbit's
-//                      point of closest approach to the earth ω₀, in rad
-// mean_anomaly: the angle of the satellite location measured from perigee M₀, in rad
-// mean_motion: mean number of orbits per day (Kozai mean motion) n₀, in rad.min⁻¹
 impl<'a> Constants<'a> {
+    /// Initializes a new propagator from epoch quantities
+    ///
+    /// If the orbital elements are obtained from a TLE or OMM,
+    /// the convenience function [sgp4::Constants::from_elements](struct.Constants.html#method.from_elements)
+    /// can be used instead of manually mapping the `Elements` fields to the `Constants::new` parameters.
+    ///
+    /// # Arguments
+    ///
+    /// * `geopotential` - The model of Earth gravity to use in the conversion
+    /// * `epoch_to_sidereal_time` - The function to use to convert the J2000 epoch to sidereal time
+    /// * `epoch` - The number of years since UTC 1 January 2000 12h00 (J2000)
+    /// * `drag_term` - The radiation pressure coefficient in earth radii⁻¹ (B*)
+    /// * `orbit_0` - The Brouwer orbital elements at epoch
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> sgp4::Result<()> {
+    /// let elements = sgp4::Elements::from_tle(
+    ///     Some("ISS (ZARYA)".to_owned()),
+    ///     "1 25544U 98067A   20194.88612269 -.00002218  00000-0 -31515-4 0  9992".as_bytes(),
+    ///     "2 25544  51.6461 221.2784 0001413  89.1723 280.4612 15.49507896236008".as_bytes(),
+    /// )?;
+    /// let constants = sgp4::Constants::new(
+    ///     &sgp4::WGS84,
+    ///     sgp4::iau_epoch_to_sidereal_time,
+    ///     elements.epoch(),
+    ///     elements.drag_term,
+    ///     sgp4::Orbit::from_kozai_elements(
+    ///         &sgp4::WGS84,
+    ///         elements.inclination * (std::f64::consts::PI / 180.0),
+    ///         elements.right_ascension * (std::f64::consts::PI / 180.0),
+    ///         elements.eccentricity,
+    ///         elements.argument_of_perigee * (std::f64::consts::PI / 180.0),
+    ///         elements.mean_anomaly * (std::f64::consts::PI / 180.0),
+    ///         elements.mean_motion * (std::f64::consts::PI / 720.0),
+    ///     )?,
+    /// )?;
+    /// #     Ok(())
+    /// # }
+    /// ```
     pub fn new(
-        geopotential: &'a model::Geopotential,
+        geopotential: &'a Geopotential,
         epoch_to_sidereal_time: impl Fn(f64) -> f64,
         epoch: f64,
         drag_term: f64,
-        orbit_0: Orbit,
+        orbit_0: propagator::Orbit,
     ) -> Result<Self> {
         if orbit_0.eccentricity < 0.0 || orbit_0.eccentricity >= 1.0 {
-            Err(Error::new("the eccentricity must be in the range [0, 1["))
+            Err(Error::new(
+                "the eccentricity must be in the range [0, 1[".to_owned(),
+            ))
         } else {
             // p₁ = cos I₀
             let p1 = orbit_0.inclination.cos();
@@ -210,7 +333,7 @@ impl<'a> Constants<'a> {
             // k₁ = ³/₂ C₁
             let k1 = 1.5 * c1;
 
-            if orbit_0.mean_motion > 2.0 * model::PI / 225.0 {
+            if orbit_0.mean_motion > 2.0 * std::f64::consts::PI / 225.0 {
                 Ok(near_earth::constants(
                     geopotential,
                     drag_term,
@@ -255,58 +378,156 @@ impl<'a> Constants<'a> {
         }
     }
 
-    pub fn from_elements(elements: &gp::Elements) -> Result<Self> {
+    /// Initializes a new propagator from an `Elements` object
+    ///
+    /// This is the recommended method to initialize a propagator from a TLE or OMM.
+    /// The WGS84 model, the IAU sidereal time expression and the accurate UTC to J2000 expression are used.
+    ///
+    /// # Arguments
+    ///
+    /// * `elements` - Orbital elements and drag term parsed from a TLE or OMM
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> sgp4::Result<()> {
+    /// let constants = sgp4::Constants::from_elements(
+    ///     &sgp4::Elements::from_tle(
+    ///         Some("ISS (ZARYA)".to_owned()),
+    ///         "1 25544U 98067A   20194.88612269 -.00002218  00000-0 -31515-4 0  9992".as_bytes(),
+    ///         "2 25544  51.6461 221.2784 0001413  89.1723 280.4612 15.49507896236008".as_bytes(),
+    ///     )?,
+    /// )?;
+    /// #     Ok(())
+    /// # }
+    /// ```
+    pub fn from_elements(elements: &Elements) -> Result<Self> {
         Constants::new(
-            &model::WGS84,
-            model::iau_epoch_to_sidereal_time,
+            &WGS84,
+            iau_epoch_to_sidereal_time,
             elements.epoch(),
             elements.drag_term,
             Orbit::from_kozai_elements(
-                &model::WGS72,
-                elements.inclination * (model::PI / 180.0),
-                elements.right_ascension * (model::PI / 180.0),
+                &WGS84,
+                elements.inclination * (std::f64::consts::PI / 180.0),
+                elements.right_ascension * (std::f64::consts::PI / 180.0),
                 elements.eccentricity,
-                elements.argument_of_perigee * (model::PI / 180.0),
-                elements.mean_anomaly * (model::PI / 180.0),
-                elements.mean_motion * (model::PI / 720.0),
+                elements.argument_of_perigee * (std::f64::consts::PI / 180.0),
+                elements.mean_anomaly * (std::f64::consts::PI / 180.0),
+                elements.mean_motion * (std::f64::consts::PI / 720.0),
             )?,
         )
     }
 
-    pub fn from_elements_afspc_compatibility_mode(elements: &gp::Elements) -> Result<Self> {
+    /// Initializes a new propagator from an `Elements` object
+    ///
+    /// This method should be used if compatibility with the AFSPC implementation is needed.
+    /// The WGS72 model, the AFSPC sidereal time expression and the AFSPC UTC to J2000 expression are used.
+    ///
+    /// # Arguments
+    ///
+    /// * `elements` - Orbital elements and drag term parsed from a TLE or OMM
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> sgp4::Result<()> {
+    /// let constants = sgp4::Constants::from_elements_afspc_compatibility_mode(
+    ///     &sgp4::Elements::from_tle(
+    ///         Some("ISS (ZARYA)".to_owned()),
+    ///         "1 25544U 98067A   20194.88612269 -.00002218  00000-0 -31515-4 0  9992".as_bytes(),
+    ///         "2 25544  51.6461 221.2784 0001413  89.1723 280.4612 15.49507896236008".as_bytes(),
+    ///     )?,
+    /// )?;
+    /// #     Ok(())
+    /// # }
+    /// ```
+    pub fn from_elements_afspc_compatibility_mode(elements: &Elements) -> Result<Self> {
         Constants::new(
-            &model::WGS72,
-            model::afspc_epoch_to_sidereal_time,
+            &WGS72,
+            afspc_epoch_to_sidereal_time,
             elements.epoch_afspc_compatibility_mode(),
             elements.drag_term,
             Orbit::from_kozai_elements(
-                &model::WGS72,
-                elements.inclination * (model::PI / 180.0),
-                elements.right_ascension * (model::PI / 180.0),
+                &WGS72,
+                elements.inclination * (std::f64::consts::PI / 180.0),
+                elements.right_ascension * (std::f64::consts::PI / 180.0),
                 elements.eccentricity,
-                elements.argument_of_perigee * (model::PI / 180.0),
-                elements.mean_anomaly * (model::PI / 180.0),
-                elements.mean_motion * (model::PI / 720.0),
+                elements.argument_of_perigee * (std::f64::consts::PI / 180.0),
+                elements.mean_anomaly * (std::f64::consts::PI / 180.0),
+                elements.mean_motion * (std::f64::consts::PI / 720.0),
             )?,
         )
     }
 
-    pub fn initial_state(&self) -> Option<deep_space::ResonanceState> {
+    /// Returns the initial deep space resonance integrator state
+    ///
+    /// For most orbits, SGP4 propagation is stateless.
+    /// That is, predictions at different times are always calculated from the epoch quantities.
+    /// No calculations are saved by propagating to successive times sequentially.
+    ///
+    /// However, resonant deep space orbits (geosynchronous or Molniya) use an integrator
+    /// to estimate the resonance effects of Earth gravity, with a 720 min time step. If the propagation
+    /// times are monotonic, a few operations per prediction can be saved by re-using the integrator state.
+    ///
+    /// The high-level API `Constants::propagate` re-initializes the state with each propagation for simplicity.
+    /// `Constants::initial_state` and `Constants::propagate_from_state` can be used together
+    /// to speed up resonant deep space satellite propagation.
+    /// For non-deep space or non-resonant orbits, their behavior is identical to `Constants::propagate`.
+    ///
+    /// See `Constants::propagate_from_state` for an example.
+    pub fn initial_state(&self) -> Option<ResonanceState> {
         match &self.method {
             propagator::Method::NearEarth { .. } => None,
             propagator::Method::DeepSpace { resonant, .. } => match resonant {
                 propagator::Resonant::No { .. } => None,
-                propagator::Resonant::Yes { lambda_0, .. } => Some(
-                    deep_space::ResonanceState::new(self.orbit_0.mean_motion, *lambda_0),
-                ),
+                propagator::Resonant::Yes { lambda_0, .. } => {
+                    Some(ResonanceState::new(self.orbit_0.mean_motion, *lambda_0))
+                }
             },
         }
     }
 
+    /// Calculates the SGP4 position and velocity predictions
+    ///
+    /// This is an advanced API which results in marginally faster propagation than `Constants::propagate` in some cases
+    /// (see `Constants::initial_state` for details), at the cost of added complexity for the user.
+    ///
+    /// The propagation times must be monotonic if the same resonance state is used repeatedly.
+    /// The `afspc_compatibility_mode` makes a difference only if the satellite is on a Lyddane deep space orbit
+    /// (period greater than 225 min and inclination smaller than 0.2 rad).
+    ///
+    /// # Arguments
+    ///
+    /// * `t` - The number of minutes since epoch (can be positive, negative or zero)
+    /// * `state` - The deep space propagator state returned by `Constants::initial_state`
+    /// * `afspc_compatibility_mode` - Set to true if compatibility with the AFSPC implementation is needed
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> sgp4::Result<()> {
+    /// let elements = sgp4::Elements::from_tle(
+    ///     Some("MOLNIYA 1-36".to_owned()),
+    ///     "1 08195U 75081A   06176.33215444  .00000099  00000-0  11873-3 0   813".as_bytes(),
+    ///     "2 08195  64.1586 279.0717 6877146 264.7651  20.2257  2.00491383225656".as_bytes(),
+    /// )?;
+    /// let constants = sgp4::Constants::from_elements(&elements)?;
+    /// let mut state = constants.initial_state();
+    /// for days in 0..7 {
+    ///     println!("t = {} min", days * 60 * 24);
+    ///     let prediction =
+    ///         constants.propagate_from_state((days * 60 * 24) as f64, state.as_mut(), false)?;
+    ///     println!("    r = {:?} km", prediction.position);
+    ///     println!("    ṙ = {:?} km.s⁻¹", prediction.velocity);
+    /// }
+    /// #     Ok(())
+    /// # }
+    /// ```
     pub fn propagate_from_state(
         &self,
         t: f64,
-        state: Option<&mut deep_space::ResonanceState>,
+        state: Option<&mut ResonanceState>,
         afspc_compatibility_mode: bool,
     ) -> Result<Prediction> {
         // p₂₂ = Ω₀ + Ω̇ t + k₀ t²
@@ -371,8 +592,8 @@ impl<'a> Constants<'a> {
         let ayn = orbit.eccentricity * orbit.argument_of_perigee.sin() + p37 * p32;
 
         // p₃₈ = M + ω + p₃₇ p₃₅ aₓₙ rem 2π
-        let p38 =
-            (orbit.mean_anomaly + orbit.argument_of_perigee + p37 * p35 * axn) % (2.0 * model::PI);
+        let p38 = (orbit.mean_anomaly + orbit.argument_of_perigee + p37 * p35 * axn)
+            % (2.0 * std::f64::consts::PI);
 
         // (E + ω)₀ = p₃₈
         let mut ew = p38;
@@ -403,7 +624,7 @@ impl<'a> Constants<'a> {
         // pₗ = a (1 - p₃₉)
         let pl = a * (1.0 - p39);
         if pl < 0.0 {
-            Err(Error::new("negative semi-latus rectum"))
+            Err(Error::new("negative semi-latus rectum".to_owned()))
         } else {
             // p₄₀ = aₓₙ sin(E + ω) - aᵧₙ cos(E + ω)
             let p40 = axn * ew.sin() - ayn * ew.cos();
@@ -503,10 +724,57 @@ impl<'a> Constants<'a> {
         }
     }
 
+    /// Calculates the SGP4 position and velocity predictions
+    ///
+    /// This is the recommended method to propagate epoch orbital elements.
+    ///
+    /// # Arguments
+    /// `t` - The number of minutes since epoch (can be positive, negative or zero)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> sgp4::Result<()> {
+    /// let constants = sgp4::Constants::from_elements_afspc_compatibility_mode(
+    ///     &sgp4::Elements::from_tle(
+    ///         Some("ISS (ZARYA)".to_owned()),
+    ///         "1 25544U 98067A   20194.88612269 -.00002218  00000-0 -31515-4 0  9992".as_bytes(),
+    ///         "2 25544  51.6461 221.2784 0001413  89.1723 280.4612 15.49507896236008".as_bytes(),
+    ///     )?,
+    /// )?;
+    /// let prediction = constants.propagate(60.0 * 24.0);
+    /// #     Ok(())
+    /// # }
+    /// ```
     pub fn propagate(&self, t: f64) -> Result<Prediction> {
         self.propagate_from_state(t, self.initial_state().as_mut(), false)
     }
 
+    /// Calculates the SGP4 position and velocity predictions
+    ///
+    /// This method should be used if compatibility with the AFSPC implementation is needed.
+    /// Its behavior is different from `Constants::propagate`
+    /// only if the satellite is on a Lyddane deep space orbit
+    /// (period greater than 225 min and inclination smaller than 0.2 rad).
+    ///
+    /// # Arguments
+    /// `t` - The number of minutes since epoch (can be positive, negative or zero)
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> sgp4::Result<()> {
+    /// let constants = sgp4::Constants::from_elements_afspc_compatibility_mode(
+    ///     &sgp4::Elements::from_tle(
+    ///         Some("ISS (ZARYA)".to_owned()),
+    ///         "1 25544U 98067A   20194.88612269 -.00002218  00000-0 -31515-4 0  9992".as_bytes(),
+    ///         "2 25544  51.6461 221.2784 0001413  89.1723 280.4612 15.49507896236008".as_bytes(),
+    ///     )?,
+    /// )?;
+    /// let prediction = constants.propagate_afspc_compatibility_mode(60.0 * 24.0);
+    /// #     Ok(())
+    /// # }
+    /// ```
     pub fn propagate_afspc_compatibility_mode(&self, t: f64) -> Result<Prediction> {
         self.propagate_from_state(t, self.initial_state().as_mut(), true)
     }

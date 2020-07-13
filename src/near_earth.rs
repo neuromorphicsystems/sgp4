@@ -1,7 +1,8 @@
+use crate::gp;
 use crate::model;
 use crate::propagator;
 
-pub fn constants<'a>(
+pub(crate) fn constants<'a>(
     geopotential: &'a model::Geopotential,
     drag_term: f64,
     orbit_0: propagator::Orbit,
@@ -154,7 +155,7 @@ pub fn constants<'a>(
 }
 
 impl<'a> propagator::Constants<'a> {
-    pub fn near_earth_orbital_elements(
+    pub(crate) fn near_earth_orbital_elements(
         &self,
         a0: f64,
         k2: f64,
@@ -166,7 +167,7 @@ impl<'a> propagator::Constants<'a> {
         t: f64,
         p22: f64,
         p23: f64,
-    ) -> propagator::Result<(propagator::Orbit, f64, f64, f64, f64, f64, f64)> {
+    ) -> gp::Result<(propagator::Orbit, f64, f64, f64, f64, f64, f64)> {
         // p₂₄ = M₀ + Ṁ t
         let p24 = self.orbit_0.mean_anomaly + self.mean_anomaly_dot * t;
         let (argument_of_perigee, mean_anomaly, a, p27) = match high_altitude {
@@ -218,7 +219,7 @@ impl<'a> propagator::Constants<'a> {
             }
         };
         if p27 >= 1.0 || p27 < -0.001 {
-            Err(propagator::Error::new("diverging eccentricity"))
+            Err(gp::Error::new("diverging eccentricity".to_owned()))
         } else {
             // e = │ 10⁻⁶ if p₂₇ < 10⁻⁶
             //     │ p₂₇  otherwise

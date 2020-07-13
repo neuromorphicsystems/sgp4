@@ -1,11 +1,41 @@
 use chrono::{Datelike, Timelike};
 
+/// Represents an SGP4 error
+///
+/// Errors can result from corrupted TLEs or OMMs, or if one of the orbital elements diverges during propagation.
 #[derive(Debug, Clone)]
 pub struct Error {
     message: String,
 }
 
 impl Error {
+    /// Creates a new error from a string
+    ///
+    /// # Arguments
+    ///
+    /// * `message` - The error message
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # fn main() -> sgp4::Result<()> {
+    /// #     if false {
+    /// Err(sgp4::Error::new("a useful message".to_owned()))
+    /// #     } else {
+    /// #         Ok::<(), sgp4::Error>(())
+    /// #     }
+    /// # }
+    /// ```
+    ///
+    /// ```
+    /// # fn main() -> sgp4::Result<()> {
+    /// #     if false {
+    /// Err(sgp4::Error::new(format!("error code {}", 3)))
+    /// #     } else {
+    /// #         Ok::<(), sgp4::Error>(())
+    /// #     }
+    /// # }
+    /// ```
     pub fn new(message: String) -> Error {
         Error { message: message }
     }
@@ -14,6 +44,12 @@ impl Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(formatter, "{}", self.message)
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(error: std::io::Error) -> Self {
+        Error::new(error.to_string())
     }
 }
 
@@ -56,75 +92,159 @@ impl DecimalPointAssumedRepresentation for [u8] {
     }
 }
 
+/// The result type returned by SGP4 functions
 pub type Result<T> = std::result::Result<T, Error>;
 
+/// A satellite's elements classification
 #[derive(serde::Serialize, serde::Deserialize)]
 pub enum Classification {
+    /// Declassfied objects or objects without a classification
     #[serde(rename = "U")]
     Unclassified,
 
+    /// Would cause "serious damage" to national security if it were publicly available
     #[serde(rename = "C")]
     Classified,
 
+    /// Would cause "damage" or be prejudicial to national security if publicly available
     #[serde(rename = "S")]
     Secret,
 }
 
+/// General perturbations orbital data parsed from a TLE or OMM
+///
+/// Elements can be retrieved from either a Two-Line Element Set (TLE) or an Orbit Mean-Elements Message (OMM).
+/// See [https://celestrak.com/NORAD/documentation/gp-data-formats.php](https://celestrak.com/NORAD/documentation/gp-data-formats.php)
+/// for more information on the difference between the two formats.
+///
+/// The fields' documentation is adapted from [https://spaceflight.nasa.gov/realdata/sightings/SSapplications/Post/JavaSSOP/SSOP_Help/tle_def.html](https://spaceflight.nasa.gov/realdata/sightings/SSapplications/Post/JavaSSOP/SSOP_Help/tle_def.html).
+///
+/// See [sgp4::Elements::from_tle](struct.Elements.html#method.from_tle) to parse a TLE.
+///
+/// `serde_json` can be used to parse a JSON OMM object (into a `sgp4::Elements`)
+///  or a JSON list of OMM objects (into a `Vec<sgp4::Elements>`).
+///
+/// # Example
+/// ```
+/// # fn main() -> sgp4::Result<()> {
+/// let elements: sgp4::Elements = serde_json::from_str(
+///     r#"{
+///         "OBJECT_NAME": "ISS (ZARYA)",
+///         "OBJECT_ID": "1998-067A",
+///         "EPOCH": "2020-07-12T01:19:07.402656",
+///         "MEAN_MOTION": 15.49560532,
+///         "ECCENTRICITY": 0.0001771,
+///         "INCLINATION": 51.6435,
+///         "RA_OF_ASC_NODE": 225.4004,
+///         "ARG_OF_PERICENTER": 44.9625,
+///         "MEAN_ANOMALY": 5.1087,
+///         "EPHEMERIS_TYPE": 0,
+///         "CLASSIFICATION_TYPE": "U",
+///         "NORAD_CAT_ID": 25544,
+///         "ELEMENT_SET_NO": 999,
+///         "REV_AT_EPOCH": 23587,
+///         "BSTAR": 0.0049645,
+///         "MEAN_MOTION_DOT": 0.00289036,
+///         "MEAN_MOTION_DDOT": 0
+///     }"#,
+/// )?;
+/// #     Ok(())
+/// # }
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Elements {
+    /// The name associated with the satellite
     #[serde(rename = "OBJECT_NAME")]
     pub object_name: Option<String>,
 
+    /// The satellite's international designator
+    ///
+    /// It consists of the launch year, the launch number of that year and
+    /// a letter code representing the sequential identifier of a piece in a launch.
     #[serde(rename = "OBJECT_ID")]
     pub international_designator: Option<String>,
 
+    /// The catalog number USSPACECOM has designated for this object
     #[serde(rename = "NORAD_CAT_ID")]
     pub norad_id: u64,
 
+    /// The elements' classification
     #[serde(rename = "CLASSIFICATION_TYPE")]
     pub classification: Classification,
 
+    /// The UTC timestamp of the elements
     #[serde(rename = "EPOCH")]
     pub datetime: chrono::naive::NaiveDateTime,
 
+    /// Time derivative of the mean motion
     #[serde(rename = "MEAN_MOTION_DOT")]
     pub mean_motion_dot: f64,
 
+    /// Second time derivative of the mean motion
     #[serde(rename = "MEAN_MOTION_DDOT")]
     pub mean_motion_ddot: f64,
 
+    /// Radiation pressure coefficient in earth radii⁻¹
     #[serde(rename = "BSTAR")]
     pub drag_term: f64,
 
+    /// A running count of all 2 line element sets generated by USSPACECOM for this object
     #[serde(rename = "ELEMENT_SET_NO")]
     pub element_set_number: u64,
 
+    /// Angle between the equator and the orbit plane in deg
     #[serde(rename = "INCLINATION")]
     pub inclination: f64,
 
+    /// Angle between vernal equinox and the point where the orbit crosses the equatorial plane in deg
     #[serde(rename = "RA_OF_ASC_NODE")]
     pub right_ascension: f64,
 
+    /// The shape of the orbit
     #[serde(rename = "ECCENTRICITY")]
     pub eccentricity: f64,
 
+    /// Angle between the ascending node and the orbit's point of closest approach to the earth in deg
     #[serde(rename = "ARG_OF_PERICENTER")]
     pub argument_of_perigee: f64,
 
+    /// Angle of the satellite location measured from perigee in deg
     #[serde(rename = "MEAN_ANOMALY")]
     pub mean_anomaly: f64,
 
+    /// Mean number of orbits per day in day⁻¹ (Kozai convention)
     #[serde(rename = "MEAN_MOTION")]
     pub mean_motion: f64,
 
+    /// The orbit number at epoch
     #[serde(rename = "REV_AT_EPOCH")]
     pub revolution_number: u64,
 
+    /// NORAD internal use, always 0 in distributed data
     #[serde(rename = "EPHEMERIS_TYPE")]
     pub ephemeris_type: u8,
 }
 
 impl Elements {
+    /// Parses a Two-Line Element Set (TLE) with an optionnal title
+    ///
+    /// # Arguments
+    ///
+    /// * `object_name` - The name of the satellite, usually given by a third line placed before the TLE
+    /// * `line1` - The first line of the TLE composed of 69 ASCII characters
+    /// * `line2` - The second line of the TLE composed of 69 ASCII characters
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # fn main() -> sgp4::Result<()> {
+    /// let elements = sgp4::Elements::from_tle(
+    ///     Some("ISS (ZARYA)".to_owned()),
+    ///     "1 25544U 98067A   08264.51782528 -.00002182  00000-0 -11606-4 0  2927".as_bytes(),
+    ///     "2 25544  51.6416 247.4627 0006703 130.5360 325.0288 15.72125391563537".as_bytes(),
+    /// )?;
+    /// #     Ok(())
+    /// # }
+    /// ```
     pub fn from_tle(object_name: Option<String>, line1: &[u8], line2: &[u8]) -> Result<Elements> {
         if line1.len() != 69 {
             return Err(Error::new("line 1 must have 69 characters".to_owned()));
@@ -238,6 +358,9 @@ impl Elements {
         })
     }
 
+    /// Returns the number of years since UTC 1 January 2000 12h00 (J2000)
+    ///
+    /// This is the recommended method to calculate the epoch
     pub fn epoch(&self) -> f64 {
         // y₂₀₀₀ = (367 yᵤ - ⌊7 (yᵤ + ⌊(mᵤ + 9) / 12⌋) / 4⌋ + 275 ⌊mᵤ / 9⌋ + dᵤ - 730531) / 365.25
         //         + (3600 hᵤ + 60 minᵤ + sᵤ - 43200) / (24 × 60 × 60 × 365.25)
@@ -245,11 +368,17 @@ impl Elements {
         (367 * self.datetime.year() as i32
             - (7 * (self.datetime.year() as i32 + (self.datetime.month() as i32 + 9) / 12)) / 4
             + 275 * self.datetime.month() as i32 / 9
-            + self.datetime.day() as i32 - 730531) as f64 / 365.25
-            + (self.datetime.num_seconds_from_midnight() as i32 - 43200) as f64 / (24.0 * 60.0 * 60.0 * 365.25)
+            + self.datetime.day() as i32
+            - 730531) as f64
+            / 365.25
+            + (self.datetime.num_seconds_from_midnight() as i32 - 43200) as f64
+                / (24.0 * 60.0 * 60.0 * 365.25)
             + (self.datetime.nanosecond() as f64) / (24.0 * 60.0 * 60.0 * 1e9 * 365.25)
     }
 
+    /// Returns the number of years since UTC 1 January 2000 12h00 (J2000) using the AFSPC expression
+    ///
+    /// This function should be used if compatibility with the AFSPC implementation is needed
     pub fn epoch_afspc_compatibility_mode(&self) -> f64 {
         // y₂₀₀₀ = (367 yᵤ - ⌊7 (yᵤ + ⌊(mᵤ + 9) / 12⌋) / 4⌋ + 275 ⌊mᵤ / 9⌋ + dᵤ
         //         + 1721013.5
@@ -273,6 +402,64 @@ impl Elements {
     }
 }
 
+/// Parses a multi-line TL/2LE string into a list of `Elements`
+///
+/// Each pair of lines must represent a TLE, for example as in
+/// [https://celestrak.com/NORAD/elements/gp.php?GROUP=stations&FORMAT=2le](https://celestrak.com/NORAD/elements/gp.php?GROUP=stations&FORMAT=2le).
+///
+/// # Arguments
+///
+/// * `tles` - A string containing multiple lines
+pub fn parse_2les(tles: &str) -> Result<Vec<Elements>> {
+    let mut line_buffer = "";
+    let mut first = true;
+    let mut elements_group = Vec::new();
+    for line in tles.lines() {
+        if first {
+            line_buffer = line;
+        } else {
+            elements_group.push(Elements::from_tle(
+                None,
+                line_buffer.as_bytes(),
+                line.as_bytes(),
+            )?);
+        }
+        first = !first;
+    }
+    Ok(elements_group)
+}
+
+/// Parses a multi-line TL/3LE string into a list of `Elements`
+///
+/// Each triplet of lines must represent a TLE with an object name, for example as in
+/// [https://celestrak.com/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle](https://celestrak.com/NORAD/elements/gp.php?GROUP=stations&FORMAT=tle).
+///
+/// # Arguments
+///
+/// * `tles` - A string containing multiple lines
+pub fn parse_3les(tles: &str) -> Result<Vec<Elements>> {
+    let mut lines_buffer = ["", ""];
+    let mut index = 0;
+    let mut elements_group = Vec::new();
+    for line in tles.lines() {
+        match index {
+            0 | 1 => {
+                lines_buffer[index] = line;
+                index += 1;
+            }
+            _ => {
+                elements_group.push(Elements::from_tle(
+                    Some(lines_buffer[0].to_owned()),
+                    lines_buffer[1].as_bytes(),
+                    line.as_bytes(),
+                )?);
+                index = 0;
+            }
+        }
+    }
+    Ok(elements_group)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -283,6 +470,113 @@ mod tests {
         } else {
             assert!((first - second).abs() / second < f64::EPSILON);
         }
+    }
+
+    #[test]
+    fn test_from_omm() -> Result<()> {
+        let elements: Elements = serde_json::from_str(
+            r#"{
+                "OBJECT_NAME": "ISS (ZARYA)",
+                "OBJECT_ID": "1998-067A",
+                "EPOCH": "2020-07-12T01:19:07.402656",
+                "MEAN_MOTION": 15.49560532,
+                "ECCENTRICITY": 0.0001771,
+                "INCLINATION": 51.6435,
+                "RA_OF_ASC_NODE": 225.4004,
+                "ARG_OF_PERICENTER": 44.9625,
+                "MEAN_ANOMALY": 5.1087,
+                "EPHEMERIS_TYPE": 0,
+                "CLASSIFICATION_TYPE": "U",
+                "NORAD_CAT_ID": 25544,
+                "ELEMENT_SET_NO": 999,
+                "REV_AT_EPOCH": 23587,
+                "BSTAR": 0.0049645,
+                "MEAN_MOTION_DOT": 0.00289036,
+                "MEAN_MOTION_DDOT": 0
+            }"#,
+        )?;
+        match elements.object_name.as_ref() {
+            Some(object_name) => assert_eq!(object_name, "ISS (ZARYA)"),
+            None => panic!(),
+        }
+        assert_eq!(elements.norad_id, 25544);
+        assert!(matches!(
+            elements.classification,
+            Classification::Unclassified
+        ));
+        assert_eq!(
+            elements.international_designator.as_ref().unwrap(),
+            "1998-067A"
+        );
+        assert_eq!(
+            elements.datetime,
+            chrono::NaiveDate::from_yo(2020, 194).and_time(
+                chrono::NaiveTime::from_num_seconds_from_midnight(4747, 402656000)
+            )
+        );
+        assert_eq_f64(elements.epoch(), 20.527186712635181);
+        assert_eq_f64(
+            elements.epoch_afspc_compatibility_mode(),
+            20.527186712635135,
+        );
+        assert_eq_f64(elements.mean_motion_dot, 0.00289036);
+        assert_eq_f64(elements.mean_motion_ddot, 0.0);
+        assert_eq_f64(elements.drag_term, 0.0049645);
+        assert_eq!(elements.ephemeris_type, 0);
+        assert_eq!(elements.element_set_number, 999);
+        assert_eq_f64(elements.inclination, 51.6435);
+        assert_eq_f64(elements.right_ascension, 225.4004);
+        assert_eq_f64(elements.eccentricity, 0.0001771);
+        assert_eq_f64(elements.argument_of_perigee, 44.9625);
+        assert_eq_f64(elements.mean_anomaly, 5.1087);
+        assert_eq_f64(elements.mean_motion, 15.49560532);
+        assert_eq!(elements.revolution_number, 23587);
+        Ok(())
+    }
+
+    #[test]
+    fn test_from_omms() -> Result<()> {
+        let elements_group: Vec<Elements> = serde_json::from_str(
+            r#"[{
+                "OBJECT_NAME": "ISS (ZARYA)",
+                "OBJECT_ID": "1998-067A",
+                "EPOCH": "2020-07-12T21:16:01.000416",
+                "MEAN_MOTION": 15.49507896,
+                "ECCENTRICITY": 0.0001413,
+                "INCLINATION": 51.6461,
+                "RA_OF_ASC_NODE": 221.2784,
+                "ARG_OF_PERICENTER": 89.1723,
+                "MEAN_ANOMALY": 280.4612,
+                "EPHEMERIS_TYPE": 0,
+                "CLASSIFICATION_TYPE": "U",
+                "NORAD_CAT_ID": 25544,
+                "ELEMENT_SET_NO": 999,
+                "REV_AT_EPOCH": 23600,
+                "BSTAR": -3.1515e-5,
+                "MEAN_MOTION_DOT": -2.218e-5,
+                "MEAN_MOTION_DDOT": 0
+            },{
+                "OBJECT_NAME": "KESTREL EYE IIM (KE2M)",
+                "OBJECT_ID": "1998-067NE",
+                "EPOCH": "2020-07-12T01:38:52.903968",
+                "MEAN_MOTION": 15.70564504,
+                "ECCENTRICITY": 0.0002758,
+                "INCLINATION": 51.6338,
+                "RA_OF_ASC_NODE": 155.6245,
+                "ARG_OF_PERICENTER": 166.8841,
+                "MEAN_ANOMALY": 193.2228,
+                "EPHEMERIS_TYPE": 0,
+                "CLASSIFICATION_TYPE": "U",
+                "NORAD_CAT_ID": 42982,
+                "ELEMENT_SET_NO": 999,
+                "REV_AT_EPOCH": 15494,
+                "BSTAR": 7.2204e-5,
+                "MEAN_MOTION_DOT": 8.489e-5,
+                "MEAN_MOTION_DDOT": 0
+            }]"#,
+        )?;
+        assert_eq!(elements_group.len(), 2);
+        Ok(())
     }
 
     #[test]
@@ -367,64 +661,28 @@ mod tests {
     }
 
     #[test]
-    fn test_from_omm() -> Result<()> {
-        let elements: Elements = serde_json::from_str(
-            r#"{
-            "OBJECT_NAME": "ISS (ZARYA)",
-            "OBJECT_ID": "1998-067A",
-            "EPOCH": "2020-07-12T01:19:07.402656",
-            "MEAN_MOTION": 15.49560532,
-            "ECCENTRICITY": 0.0001771,
-            "INCLINATION": 51.6435,
-            "RA_OF_ASC_NODE": 225.4004,
-            "ARG_OF_PERICENTER": 44.9625,
-            "MEAN_ANOMALY": 5.1087,
-            "EPHEMERIS_TYPE": 0,
-            "CLASSIFICATION_TYPE": "U",
-            "NORAD_CAT_ID": 25544,
-            "ELEMENT_SET_NO": 999,
-            "REV_AT_EPOCH": 23587,
-            "BSTAR": 0.0049645,
-            "MEAN_MOTION_DOT": 0.00289036,
-            "MEAN_MOTION_DDOT": 0
-        }"#,
+    fn test_parse_2les() -> Result<()> {
+        let elements_group = parse_2les(
+            "1 25544U 98067A   20194.88612269 -.00002218  00000-0 -31515-4 0  9992\n\
+             2 25544  51.6461 221.2784 0001413  89.1723 280.4612 15.49507896236008\n\
+             1 42982U 98067NE  20194.06866787  .00008489  00000-0  72204-4 0  9997\n\
+             2 42982  51.6338 155.6245 0002758 166.8841 193.2228 15.70564504154944\n",
         )?;
-        match elements.object_name.as_ref() {
-            Some(object_name) => assert_eq!(object_name, "ISS (ZARYA)"),
-            None => panic!(),
-        }
-        assert_eq!(elements.norad_id, 25544);
-        assert!(matches!(
-            elements.classification,
-            Classification::Unclassified
-        ));
-        assert_eq!(
-            elements.international_designator.as_ref().unwrap(),
-            "1998-067A"
-        );
-        assert_eq!(
-            elements.datetime,
-            chrono::NaiveDate::from_yo(2020, 194).and_time(
-                chrono::NaiveTime::from_num_seconds_from_midnight(4747, 402656000)
-            )
-        );
-        assert_eq_f64(elements.epoch(), 20.527186712635181);
-        assert_eq_f64(
-            elements.epoch_afspc_compatibility_mode(),
-            20.527186712635135,
-        );
-        assert_eq_f64(elements.mean_motion_dot, 0.00289036);
-        assert_eq_f64(elements.mean_motion_ddot, 0.0);
-        assert_eq_f64(elements.drag_term, 0.0049645);
-        assert_eq!(elements.ephemeris_type, 0);
-        assert_eq!(elements.element_set_number, 999);
-        assert_eq_f64(elements.inclination, 51.6435);
-        assert_eq_f64(elements.right_ascension, 225.4004);
-        assert_eq_f64(elements.eccentricity, 0.0001771);
-        assert_eq_f64(elements.argument_of_perigee, 44.9625);
-        assert_eq_f64(elements.mean_anomaly, 5.1087);
-        assert_eq_f64(elements.mean_motion, 15.49560532);
-        assert_eq!(elements.revolution_number, 23587);
+        assert_eq!(elements_group.len(), 2);
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_3les() -> Result<()> {
+        let elements_group = parse_3les(
+            "ISS (ZARYA)\n\
+             1 25544U 98067A   20194.88612269 -.00002218  00000-0 -31515-4 0  9992\n\
+             2 25544  51.6461 221.2784 0001413  89.1723 280.4612 15.49507896236008\n\
+             KESTREL EYE IIM (KE2M)\n\
+             1 42982U 98067NE  20194.06866787  .00008489  00000-0  72204-4 0  9997\n\
+             2 42982  51.6338 155.6245 0002758 166.8841 193.2228 15.70564504154944\n",
+        )?;
+        assert_eq!(elements_group.len(), 2);
         Ok(())
     }
 }

@@ -6,11 +6,25 @@ The code was entirely refactored to leverage Rust's algebraic data types and hig
 
 The numerical predictions are almost identical to those of the Celestrak implementation. The observed differences (less than 2 × 10⁻⁷ km for the position and 10⁻⁹ km.s⁻¹ for the velocity three and a half years after epoch) are well below the accuracy of the algorithm.
 
-We drew inspiration from the incomplete https://github.com/natronics/rust-sgp4 to format mathematical expressions.
+We drew inspiration from the incomplete https://github.com/natronics/rust-sgp4 to write mathematical expressions using UTF-8 characters.
 
-## Install
+## Cargo
 
-## Usage
+```
+[dependencies]
+sgp4 = "0.1"
+```
+
+## Documentation
+
+The code documentation is hosted on docs.rs: [https://docs.rs/sgp4/0.1.0/sgp4/](https://docs.rs/sgp4/0.1.0/sgp4/).
+
+Examples can be found in this repository's *examples* directory:
+- *examples/celestrak.rs* retrives the most recent "stations" OMMs from Celestrak and propagates them
+- *examples/omm.rs* parses and propagates a JSON-encoded OMM
+- *examples/tle.rs* parses and propagates a TLE
+- *examples/tle_afspc.rs* parses and propagates a TLE using the AFSPC compatibility mode
+- *examples/advanced.rs* leverages the advanced API to (marginally) accelerate the propagation of deep space resonant satellites
 
 ## Benchmarks
 
@@ -133,7 +147,7 @@ The following variables depend solely on epoch elements.
 | `g532`                                  | `G₅₃₂`         | partial expression of `D₅₂₃₂` |
 | `g521`                                  | `G₅₂₁`         | partial expression of `D₅₄₂₁` |
 | `g533`                                  | `G₅₃₃`         | partial expression of `D₅₄₃₃` |
-| `d220₋1`                                | `D₂₂₀₋₁`       | gravity resonance coefficient for Molniya orbits (the `Dₗₘₚₖ` expression in [[2]](#2) is missing a factor `l - 2p + k` from the original equation in [[4]](#4), and `k` needs to be `-1` instead of `1`) |
+| `d220₋1`                                | `D₂₂₀₋₁`       | gravity resonance coefficient for Molniya orbits (the `Dₗₘₚₖ` expression in [[2]](#2) is missing a factor `l - 2p + k` from the original equation in [[4]](#4) with `k = -1` instead of `1`) |
 | `d2211`                                 | `D₂₂₁₁`        | gravity resonance coefficient for Molniya orbits (the `Dₗₘₚₖ` expression in [[2]](#2) is missing a factor `l - 2p + k` from the original equation in [[4]](#4)) |
 | `d3210`                                 | `D₃₂₁₀`        | see `D₂₂₁₁` |
 | `d3222`                                 | `D₃₂₂₂`        | see `D₂₂₁₁` |
@@ -193,12 +207,12 @@ The following expressions depend on the propagation time `t`.
 | `u0`                                    | `u₀`           | x component of the position unit vector |
 | `u1`                                    | `u₁`           | y component of the position unit vector |
 | `u2`                                    | `u₂`           | z component of the position unit vector |
-| `prediction.position[0]`                | `r₀`           | x component of the position vector |
-| `prediction.position[1]`                | `r₁`           | y component of the position vector |
-| `prediction.position[2]`                | `r₂`           | z component of the position vector |
-| `prediction.velocity[0]`                | `ṙ₀`           | x component of the velocity vector |
-| `prediction.velocity[1]`                | `ṙ₁`           | y component of the velocity vector |
-| `prediction.velocity[2]`                | `ṙ₂`           | z component of the velocity vector |
+| `prediction.position[0]`                | `r₀`           | x component of the position vector in km (True Equator, Mean Equinox (TEME) of epoch reference frame) |
+| `prediction.position[1]`                | `r₁`           | y component of the position vector in km (True Equator, Mean Equinox (TEME) of epoch reference frame) |
+| `prediction.position[2]`                | `r₂`           | z component of the position vector in km (True Equator, Mean Equinox (TEME) of epoch reference frame) |
+| `prediction.velocity[0]`                | `ṙ₀`           | x component of the velocity vector in km.s⁻¹ (True Equator, Mean Equinox (TEME) of epoch reference frame) |
+| `prediction.velocity[1]`                | `ṙ₁`           | y component of the velocity vector in km.s⁻¹ (True Equator, Mean Equinox (TEME) of epoch reference frame) |
+| `prediction.velocity[2]`                | `ṙ₂`           | z component of the velocity vector in km.s⁻¹ (True Equator, Mean Equinox (TEME) of epoch reference frame) |
 | `p24`                                   | `p₂₄`          | mean anomaly without drag contributions in near earth propagation |
 | `p25`                                   | `p₂₅`          | partial expression of `ω` and `M` in near earth propagation |
 | `p26`                                   | `p₂₆`          | mean anomaly with elliptic correction and without drag contributions in near earth propagation |
@@ -629,20 +643,20 @@ Defined only if `n₀" ≤ 2π / 225` (deep space) and either:
 - `0.0034906585 < n₀" < 0.0052359877` (geosynchronous)
 - `8.26 × 10⁻³ ≤ n₀" ≤ 9.24 × 10⁻³` and `e₀ ≥ 0.5` (Molniya)
 
-The sidereal time `θ₀` at epoch can be calculated with either the AFSPC formula:
+The sidereal time `θ₀` at epoch can be calculated with either the IAU formula:
+```
+c₂₀₀₀ = y₂₀₀₀ / 100
+
+θ₀ = ¹/₂₄₀ (π / 180) (- 6.2 × 10⁻⁶ c₂₀₀₀³ + 0.093104 c₂₀₀₀²
+     + (876600 × 3600 + 8640184.812866) c₂₀₀₀ + 67310.54841) mod 2π
+```
+or the AFSPC formula:
 ```
 d₁₉₇₀ = 365.25 (y₂₀₀₀ + 30) + 1
 
 θ₀ = 1.7321343856509374 + 1.72027916940703639 × 10⁻² ⌊d₁₉₇₀ + 10⁻⁸⌋
      + (1.72027916940703639 × 10⁻² + 2π) (d₁₉₇₀ - ⌊d₁₉₇₀ + 10⁻⁸⌋)
      + 5.07551419432269442 × 10⁻¹⁵ d₁₉₇₀² mod 2π
-```
-or the IAU formula:
-```
-c₂₀₀₀ = y₂₀₀₀ / 100
-
-θ₀ = ¹/₂₄₀ (π / 180) (- 6.2 × 10⁻⁶ c₂₀₀₀³ + 0.093104 c₂₀₀₀²
-     + (876600 × 3600 + 8640184.812866) c₂₀₀₀ + 67310.54841) mod 2π
 ```
 
 ```

@@ -1,6 +1,4 @@
-use crate::model;
-
-pub struct Perturbations {
+pub(crate) struct Perturbations {
     kx0: f64,
     kx1: f64,
     kx2: f64,
@@ -16,12 +14,12 @@ pub struct Perturbations {
     third_body_mean_anomaly_0: f64,
 }
 
-pub struct Dots {
-    pub inclination: f64,
-    pub right_ascension: f64,
-    pub eccentricity: f64,
-    pub argument_of_perigee: f64,
-    pub mean_anomaly: f64,
+pub(crate) struct Dots {
+    pub(crate) inclination: f64,
+    pub(crate) right_ascension: f64,
+    pub(crate) eccentricity: f64,
+    pub(crate) argument_of_perigee: f64,
+    pub(crate) mean_anomaly: f64,
 }
 
 // inclination_0: the angle between the equator and the orbit plane i₀, in rad
@@ -44,7 +42,7 @@ pub struct Dots {
 // third_body_mean_motion: the third body's mean motion nₓ
 // p1: the constant p₁ = 1 − e₀²
 // b0: the constant β₀ = p₁¹ᐟ²
-pub fn perturbations_and_dots(
+pub(crate) fn perturbations_and_dots(
     inclination_0: f64,
     eccentricity_0: f64,
     argument_of_perigee_0: f64,
@@ -173,7 +171,7 @@ pub fn perturbations_and_dots(
     //      │                                 or I₀ > π - 5.2359877 × 10⁻²
     //      │ - nₓ pₓ₁ (Zₓ₂₁ + Zₓ₂₃) / sin I₀ otherwise
     let third_body_right_ascension_dot =
-        if inclination_0 < 5.2359877e-2 || inclination_0 > model::PI - 5.2359877e-2 {
+        if inclination_0 < 5.2359877e-2 || inclination_0 > std::f64::consts::PI - 5.2359877e-2 {
             0.0
         } else {
             -third_body_mean_motion * px1 * (zx21 + zx23) / inclination_0.sin()
@@ -249,7 +247,7 @@ pub fn perturbations_and_dots(
 }
 
 impl Perturbations {
-    pub fn long_period_periodic_effects(
+    pub(crate) fn long_period_periodic_effects(
         &self,
         third_body_eccentricity: f64,
         third_body_mean_motion: f64,
