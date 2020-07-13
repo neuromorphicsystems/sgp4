@@ -2,7 +2,8 @@
 //!
 //! It also provides methods to parse both Two-Line Element Set (TLE) and Orbit Mean-Elements Message (OMM) data.
 //!
-//! Several examples can be found in the repository [https://github.com/neuromorphicsystems/sgp4](https://github.com/neuromorphicsystems/sgp4).
+//! A UTF-8 transcript of the mathematical expressions that compose SGP4
+//! can be found in the repository [https://github.com/neuromorphicsystems/sgp4](https://github.com/neuromorphicsystems/sgp4).
 //!
 //! # Example
 //!

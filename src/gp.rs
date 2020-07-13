@@ -13,7 +13,7 @@ impl Error {
     ///
     /// # Arguments
     ///
-    /// * `message` - The error message
+    /// * `message` - A description of the error
     ///
     /// # Examples
     ///
