@@ -388,15 +388,16 @@ impl Elements {
         //         + nsᵤ / (24 × 60 × 60 × 10⁹)
         //         - 2451545)
         //         / 365.25
-        (((367 * self.datetime.year() as u32
+        ((367 * self.datetime.year() as u32
             - (7 * (self.datetime.year() as u32 + (self.datetime.month() + 9) / 12)) / 4
             + 275 * self.datetime.month() / 9
             + self.datetime.day()) as f64
             + 1721013.5
-            + self.datetime.hour() as f64 / 24.0
-            + self.datetime.minute() as f64 / (24.0 * 60.0)
-            + self.datetime.second() as f64 / (24.0 * 60.0 * 60.0)
-            + self.datetime.nanosecond() as f64 / (24.0 * 60.0 * 60.0 * 1e9))
+            + (((self.datetime.nanosecond() as f64 / 1e9 + self.datetime.second() as f64) / 60.0
+                + self.datetime.minute() as f64)
+                / 60.0
+                + self.datetime.hour() as f64)
+                / 24.0
             - 2451545.0)
             / 365.25
     }
