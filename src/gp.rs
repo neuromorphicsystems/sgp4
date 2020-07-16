@@ -382,10 +382,7 @@ impl Elements {
     pub fn epoch_afspc_compatibility_mode(&self) -> f64 {
         // y₂₀₀₀ = (367 yᵤ - ⌊7 (yᵤ + ⌊(mᵤ + 9) / 12⌋) / 4⌋ + 275 ⌊mᵤ / 9⌋ + dᵤ
         //         + 1721013.5
-        //         + hᵤ / 24
-        //         + minᵤ / (24 × 60)
-        //         + sᵤ / (24 × 60 × 60)
-        //         + nsᵤ / (24 × 60 × 60 × 10⁹)
+        //         + (((nsᵤ / 10⁹ + sᵤ) / 60 + minᵤ) / 60 + hᵤ) / 24
         //         - 2451545)
         //         / 365.25
         ((367 * self.datetime.year() as u32
