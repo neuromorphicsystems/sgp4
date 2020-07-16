@@ -17,7 +17,7 @@ sgp4 = "0.2"
 
 ## Documentation
 
-The code documentation is hosted on docs.rs: [https://docs.rs/sgp4/0.2.0/sgp4/](https://docs.rs/sgp4/0.2.0/sgp4/).
+The code documentation is hosted at [https://docs.rs/sgp4/0.2.0/sgp4/](https://docs.rs/sgp4/0.2.0/sgp4/).
 
 Examples can be found in this repository's *examples* directory:
 - *examples/celestrak.rs* retrives the most recent "stations" OMMs from Celestrak and propagates them
@@ -26,7 +26,49 @@ Examples can be found in this repository's *examples* directory:
 - *examples/tle_afspc.rs* parses and propagates a TLE using the AFSPC compatibility mode
 - *examples/advanced.rs* leverages the advanced API to (marginally) accelerate the propagation of deep space resonant satellites
 
-## Benchmarks
+## Benchmark
+
+The benchmark implementation is available at https://github.com/neuromorphicsystems/sgp4-benchmark. It compares multiple implementations:
+- `cpp`: the Celestrak implementation [[1]](#1) in improved mode
+- `cpp-afspc`: the Celestrak implementation [[1]](#1) in AFSPC compatibility mode
+- `cpp-fastmath`: the Celestrak implementation [[1]](#1) in improved mode with the `fast-math` compiler flag
+- `cpp-afspc-fastmath`: the Celestrak implementation [[1]](#1) in AFSPC compatibility mode with the `fast-math` compiler flag
+- `rust`: our Rust implementation in default mode
+- `rust-afspc`: our Rust implementation in AFSPC compatibility mode
+
+It must not be confused with the code in the *bench* directory of this repository. The latter considers a small subset of the Celestrak catalogue (the tests recommended in [[1]](#1)) and does not measure the original C++ implementation.
+
+The present results were obtained using a machine with the following configuration:
+- __CPU__ - Intel Core i7-8700 @ 3.20GHz
+- __RAM__ - Kingston DDR4 @ 2.667 GHz
+- __OS__ - Ubuntu 16.04
+- __Compilers__ - Rust 1.44.1 and gcc 9.3.0
+
+Accuracy measures the maximum propagation error of each implementation with respect to the reference implementation (`cpp-afspc`) over the full Celestrak catalogue (1 minute timestep over 24 hours).
+
+| implementation       | maximum position error | maximum speed error |
+|----------------------|------------------------|---------------------|
+| `cpp-afspc`          |            (reference) |         (reference) |
+| `cpp`                |                1.05 km |  1.30 × 10⁻³ km.s⁻¹ |
+| `cpp-fastmath`       |                1.05 km |  1.30 × 10⁻³ km.s⁻¹ |
+| `cpp-afspc-fastmath` |         4.21 × 10⁻⁸ km | 7.51 × 10⁻¹² km.s⁻¹ |
+| `rust`               |                1.05 km |  1.30 × 10⁻³ km.s⁻¹ |
+| `rust-afspc`         |         4.19 × 10⁻⁸ km | 7.46 × 10⁻¹² km.s⁻¹ |
+
+The Rust and C++ fast-math errors have the same order of magnitude. In both cases, they can be attributed to mathematically identical expressions implemented with different floating-point operations.
+
+Speed measures the time it takes to propagate every satellite in the Celestrak catalogue (1 minute timestep over 24 hours) using a single thread. 100 values are sampled per implementation.
+
+| implementation       | minimum | Q1     | median | Q3     | maximum | relative difference |
+|----------------------|---------|--------|--------|--------|---------|---------------------|
+| `cpp-afspc`          |  8.95 s | 9.02 s | 9.03 s | 9.06 s |  9.18 s |         (reference) |
+| `cpp`                |  8.95 s | 9.01 s | 9.04 s | 9.06 s |  9.25 s |               + 0 % |
+| `cpp-fastmath`       |  7.67 s | 7.74 s | 7.77 s | 7.79 s |  7.90 s |              - 14 % |
+| `cpp-afspc-fastmath` |  7.70 s | 7.74 s | 7.76 s | 7.79 s |  7.86 s |              - 14 % |
+| `rust`               |  8.36 s | 8.41 s | 8.43 s | 8.45 s |  8.53 s |               - 7 % |
+| `rust-afspc`         |  8.36 s | 8.41 s | 8.43 s | 8.46 s |  8.59 s |               - 7 % |
+
+Rust fast-math support is a work in progress (see https://github.com/rust-lang/rust/issues/21690). Similarly to C++, it should have a very small impact on accuracy while providing a substantial speed gain.
 
 ## Variables and mathematical expressions
 
@@ -337,12 +379,9 @@ The following variables depend on the propagation time `t`.
 #### UT1 to Julian conversion
 The epoch (Julian years since UTC 1 January 2000 12h00) can be calculated with either the AFSPC formula:
 ```
-y₂₀₀₀ = (367 yᵤₜ₁ - ⌊7 (yᵤₜ₁ + ⌊(mᵤₜ₁ + 9) / 12⌋) / 4⌋ + 275 ⌊mᵤₜ₁ / 9⌋ + dᵤₜ₁
+y₂₀₀₀ = (367 yᵤ - ⌊7 (yᵤ + ⌊(mᵤ + 9) / 12⌋) / 4⌋ + 275 ⌊mᵤ / 9⌋ + dᵤ
         + 1721013.5
-        + hᵤₜ₁ / 24
-        + minᵤₜ₁ / (24 × 60)
-        + sᵤₜ₁ / (24 × 60 × 60)
-        + nsᵤₜ₁ / (24 × 60 × 60 × 10⁹)
+        + (((nsᵤ / 10⁹ + sᵤ) / 60 + minᵤ) / 60 + hᵤ) / 24
         - 2451545)
         / 365.25
 ```
