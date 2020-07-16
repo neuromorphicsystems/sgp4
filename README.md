@@ -17,10 +17,10 @@ sgp4 = "0.3"
 
 ## Documentation
 
-The code documentation is hosted at [https://docs.rs/sgp4/0.3.0/sgp4/](https://docs.rs/sgp4/0.3.0/sgp4/).
+The code documentation is hosted at [https://docs.rs/sgp4/0.3.1/sgp4/](https://docs.rs/sgp4/0.3.1/sgp4/).
 
 Examples can be found in this repository's *examples* directory:
-- *examples/celestrak.rs* retrives the most recent "stations" OMMs from Celestrak and propagates them
+- *examples/celestrak.rs* retrieves the most recent "stations" OMMs from Celestrak and propagates them
 - *examples/omm.rs* parses and propagates a JSON-encoded OMM
 - *examples/tle.rs* parses and propagates a TLE
 - *examples/tle_afspc.rs* parses and propagates a TLE using the AFSPC compatibility mode
@@ -28,7 +28,7 @@ Examples can be found in this repository's *examples* directory:
 
 ## Benchmark
 
-The benchmark implementation is available at https://github.com/neuromorphicsystems/sgp4-benchmark. It compares multiple implementations:
+The benchmark code is available at https://github.com/neuromorphicsystems/sgp4-benchmark. It compares two SGP4 implementations in different configurations:
 - `cpp`: the Celestrak implementation [[1]](#1) in improved mode
 - `cpp-afspc`: the Celestrak implementation [[1]](#1) in AFSPC compatibility mode
 - `cpp-fastmath`: the Celestrak implementation [[1]](#1) in improved mode with the `fast-math` compiler flag
@@ -36,7 +36,7 @@ The benchmark implementation is available at https://github.com/neuromorphicsyst
 - `rust`: our Rust implementation in default mode
 - `rust-afspc`: our Rust implementation in AFSPC compatibility mode
 
-It must not be confused with the code in the *bench* directory of this repository. The latter considers a small subset of the Celestrak catalogue (the tests recommended in [[1]](#1)) and does not measure the original C++ implementation.
+This benchmark must not be confused with the code in this repository's *bench* directory. The latter considers only a small subset of the Celestrak catalogue (the tests recommended in [[1]](#1)) and does not measure the original C++ implementation.
 
 The present results were obtained using a machine with the following configuration:
 - __CPU__ - Intel Core i7-8700 @ 3.20GHz
