@@ -86,6 +86,8 @@ impl DecimalPointAssumedRepresentation for [u8] {
         let trimmed = std::str::from_utf8(self)?.trim_start();
         if trimmed.starts_with("-") {
             Ok(format!("-.{}", &trimmed[1..]).parse::<f64>()?)
+        } else if trimmed.starts_with("+") {
+            Ok(format!(".{}", &trimmed[1..]).parse::<f64>()?)
         } else {
             Ok(format!(".{}", trimmed).parse::<f64>()?)
         }
@@ -278,8 +280,8 @@ impl Elements {
                 )));
             }
         }
-        let norad_id = std::str::from_utf8(&line1[2..7])?.parse::<u64>()?;
-        if norad_id != std::str::from_utf8(&line2[2..7])?.parse::<u64>()? {
+        let norad_id = std::str::from_utf8(&line1[2..7])?.trim_start().parse::<u64>()?;
+        if norad_id != std::str::from_utf8(&line2[2..7])?.trim_start().parse::<u64>()? {
             return Err(Error::new(
                 "line 1 and 2 have different satellite numbers".to_owned(),
             ));
