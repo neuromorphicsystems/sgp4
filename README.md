@@ -12,12 +12,12 @@ We drew inspiration from the incomplete https://github.com/natronics/rust-sgp4 t
 
 ```
 [dependencies]
-sgp4 = "0.3"
+sgp4 = "0.4"
 ```
 
 ## Documentation
 
-The code documentation is hosted at [https://docs.rs/sgp4/0.3.1/sgp4/](https://docs.rs/sgp4/0.3.1/sgp4/).
+The code documentation is hosted at [https://docs.rs/sgp4/0.4.0/sgp4/](https://docs.rs/sgp4/0.4.0/sgp4/).
 
 Examples can be found in this repository's *examples* directory:
 - *examples/celestrak.rs* retrieves the most recent "stations" OMMs from Celestrak and propagates them
