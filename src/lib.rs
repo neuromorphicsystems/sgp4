@@ -54,6 +54,7 @@ pub use gp::parse_3les;
 pub use gp::Elements;
 pub use gp::Error;
 pub use gp::Result;
+pub use gp::Classification;
 pub use model::afspc_epoch_to_sidereal_time;
 pub use model::iau_epoch_to_sidereal_time;
 pub use model::Geopotential;
