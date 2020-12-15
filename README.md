@@ -26,6 +26,13 @@ Examples can be found in this repository's *examples* directory:
 - *examples/tle_afspc.rs* parses and propagates a TLE using the AFSPC compatibility mode
 - *examples/advanced.rs* leverages the advanced API to (marginally) accelerate the propagation of deep space resonant satellites
 
+To run an example, use:
+```sh
+cargo run --example celestrak
+```
+
+To run the space-track example, you must first replace the identity and password (lines 3 and 4) with your Space-Track.org credentials.
+
 ## Benchmark
 
 The benchmark code is available at https://github.com/neuromorphicsystems/sgp4-benchmark. It compares two SGP4 implementations in different configurations:
