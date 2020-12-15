@@ -51,6 +51,7 @@ mod third_body;
 pub use deep_space::ResonanceState;
 pub use gp::parse_2les;
 pub use gp::parse_3les;
+pub use gp::Classification;
 pub use gp::Elements;
 pub use gp::Error;
 pub use gp::Result;
