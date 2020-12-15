@@ -12,26 +12,27 @@ We drew inspiration from the incomplete https://github.com/natronics/rust-sgp4 t
 
 ```
 [dependencies]
-sgp4 = "0.4"
+sgp4 = "0.5"
 ```
 
 ## Documentation
 
-The code documentation is hosted at [https://docs.rs/sgp4/0.4.0/sgp4/](https://docs.rs/sgp4/0.4.0/sgp4/).
+The code documentation is hosted at [https://docs.rs/sgp4/0.5.0/sgp4/](https://docs.rs/sgp4/0.5.0/sgp4/).
 
 Examples can be found in this repository's *examples* directory:
 - *examples/celestrak.rs* retrieves the most recent "stations" OMMs from Celestrak and propagates them
 - *examples/omm.rs* parses and propagates a JSON-encoded OMM
+- *examples/space-track.rs* retrieves the 20 most recent launches OMMs from Space-Track and propagates them
 - *examples/tle.rs* parses and propagates a TLE
 - *examples/tle_afspc.rs* parses and propagates a TLE using the AFSPC compatibility mode
 - *examples/advanced.rs* leverages the advanced API to (marginally) accelerate the propagation of deep space resonant satellites
 
-To run an example, use:
+To run an example (here *examples/celestrak.rs*), use:
 ```sh
 cargo run --example celestrak
 ```
 
-To run the space-track example, you must first replace the identity and password (lines 3 and 4) with your Space-Track.org credentials.
+To run the Space-Track example, you must first assign your Space-Track.org credentials to the fields `identity` and `password` (see lines 3 and 4 in *examples/space-track.rs*).
 
 ## Benchmark
 
