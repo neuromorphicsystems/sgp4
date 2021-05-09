@@ -171,7 +171,7 @@ pub(crate) fn perturbations_and_dots(
     //      │                                 or I₀ > π - 5.2359877 × 10⁻²
     //      │ - nₓ pₓ₁ (Zₓ₂₁ + Zₓ₂₃) / sin I₀ otherwise
     let third_body_right_ascension_dot =
-        if inclination_0 < 5.2359877e-2 || inclination_0 > std::f64::consts::PI - 5.2359877e-2 {
+        if !(5.2359877e-2..=std::f64::consts::PI - 5.2359877e-2).contains(&inclination_0) {
             0.0
         } else {
             -third_body_mean_motion * px1 * (zx21 + zx23) / inclination_0.sin()

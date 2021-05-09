@@ -743,14 +743,14 @@ impl<'a> propagator::Constants<'a> {
 
         // p₃₁ = e₀ + ė t - C₄ t
         let p31 = self.orbit_0.eccentricity + eccentricity_dot * t - self.c4 * t;
-        if p31 >= 1.0 || p31 < -0.001 {
+        if !(-0.001..1.0).contains(&p31) {
             Err(gp::Error::new("diverging eccentricity".to_owned()))
         } else {
             // e = │ 10⁻⁶ + (δeₛ + δeₗ) if p₃₁ < 10⁻⁶
             //     │ p₃₁ + (δeₛ + δeₗ)  otherwise
             let eccentricity =
                 (p31).max(1.0e-6) + (solar_delta_eccentricity + lunar_delta_eccentricity);
-            if eccentricity < 0.0 || eccentricity > 1.0 {
+            if !(0.0..=1.0).contains(&eccentricity) {
                 Err(gp::Error::new(
                     "diverging perturbed eccentricity".to_owned(),
                 ))

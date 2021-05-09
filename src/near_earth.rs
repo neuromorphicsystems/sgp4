@@ -218,7 +218,7 @@ impl<'a> propagator::Constants<'a> {
                 )
             }
         };
-        if p27 >= 1.0 || p27 < -0.001 {
+        if !(-0.001..1.0).contains(&p27) {
             Err(gp::Error::new("diverging eccentricity".to_owned()))
         } else {
             // e = │ 10⁻⁶ if p₂₇ < 10⁻⁶

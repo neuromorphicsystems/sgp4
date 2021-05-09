@@ -344,7 +344,7 @@ impl Elements {
                 .iter()
                 .fold(0, |accumulator, character| match character {
                     b'-' => accumulator + 1,
-                    character if character >= &b'0' && character <= &b'9' => {
+                    character if (&b'0'..=&b'9').contains(&character) => {
                         accumulator + (character - b'0') as u16
                     }
                     _ => accumulator,
