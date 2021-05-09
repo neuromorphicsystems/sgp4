@@ -364,10 +364,7 @@ impl Elements {
                 b'S' => Classification::Secret,
                 _ => return Err(Error::new("unknown classification".to_owned())),
             },
-            international_designator: if line1[9..17]
-                .iter()
-                .all(|character| *character == ' ' as u8)
-            {
+            international_designator: if line1[9..17].iter().all(|character| *character == b' ') {
                 None
             } else {
                 Some(format!(
