@@ -526,6 +526,7 @@ impl<'a> Constants<'a> {
     /// #     Ok(())
     /// # }
     /// ```
+    #[allow(clippy::many_single_char_names)]
     pub fn propagate_from_state(
         &self,
         t: f64,
