@@ -85,10 +85,10 @@ trait DecimalPointAssumedRepresentation {
 impl DecimalPointAssumedRepresentation for [u8] {
     fn parse_decimal_point_assumed(&self) -> Result<f64> {
         let trimmed = std::str::from_utf8(self)?.trim_start();
-        if trimmed.starts_with("-") {
-            Ok(format!("-.{}", &trimmed[1..]).parse::<f64>()?)
-        } else if trimmed.starts_with("+") {
-            Ok(format!(".{}", &trimmed[1..]).parse::<f64>()?)
+        if let Some(stripped) = trimmed.strip_prefix('-') {
+            Ok(format!("-.{}", stripped).parse::<f64>()?)
+        } else if let Some(stripped) = trimmed.strip_prefix('+') {
+            Ok(format!(".{}", stripped).parse::<f64>()?)
         } else {
             Ok(format!(".{}", trimmed).parse::<f64>()?)
         }
