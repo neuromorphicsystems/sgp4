@@ -315,7 +315,7 @@ pub(crate) fn constants<'a>(
         b0,
     );
     propagator::Constants {
-        geopotential: geopotential,
+        geopotential,
 
         // Ω̇ = p₁₄ + (Ω̇ₛ + Ω̇ₗ)
         right_ascension_dot: p14 + (solar_dots.right_ascension + lunar_dots.right_ascension),
@@ -326,15 +326,15 @@ pub(crate) fn constants<'a>(
 
         // Ṁ = p₁₅ + (Ṁₛ + Ṁₗ)
         mean_anomaly_dot: p15 + (solar_dots.mean_anomaly + lunar_dots.mean_anomaly),
-        c1: c1,
-        c4: c4,
-        k0: k0,
-        k1: k1,
+        c1,
+        c4,
+        k0,
+        k1,
         method: propagator::Method::DeepSpace {
             eccentricity_dot: solar_dots.eccentricity + lunar_dots.eccentricity,
             inclination_dot: solar_dots.inclination + lunar_dots.inclination,
-            solar_perturbations: solar_perturbations,
-            lunar_perturbations: lunar_perturbations,
+            solar_perturbations,
+            lunar_perturbations,
             resonant: if (orbit_0.mean_motion < 0.0052359877 && orbit_0.mean_motion > 0.0034906585)
                 || (orbit_0.mean_motion >= 8.26e-3
                     && orbit_0.mean_motion <= 9.24e-3
@@ -356,7 +356,7 @@ pub(crate) fn constants<'a>(
                             + (solar_dots.argument_of_perigee + lunar_dots.argument_of_perigee)
                             + (solar_dots.right_ascension + lunar_dots.right_ascension)
                             - orbit_0.mean_motion,
-                        sidereal_time_0: sidereal_time_0,
+                        sidereal_time_0,
                         resonance: {
                             // p₁₇ = 3 (n / a₀")²
                             let p17 = 3.0 * (orbit_0.mean_motion / a0).powi(2);
@@ -412,7 +412,7 @@ pub(crate) fn constants<'a>(
                                 * (p14 + (solar_dots.right_ascension + lunar_dots.right_ascension)
                                     - SIDEREAL_SPEED)
                             - orbit_0.mean_motion,
-                        sidereal_time_0: sidereal_time_0,
+                        sidereal_time_0,
                         resonance: {
                             // p₁₈ = 3 n₀"² / a₀"²
                             let p18 = 3.0 * orbit_0.mean_motion.powi(2) * (1.0 / a0).powi(2);
@@ -612,16 +612,16 @@ pub(crate) fn constants<'a>(
                                         * (-2.0 - 8.0 * p1
                                             + p1.powi(2) * (12.0 + 8.0 * p1 - 10.0 * p1.powi(2))))
                                     * g533,
-                                k14: k14,
+                                k14,
                             }
                         },
                     }
                 }
             } else {
-                propagator::Resonant::No { a0: a0 }
+                propagator::Resonant::No { a0 }
             },
         },
-        orbit_0: orbit_0,
+        orbit_0,
     }
 }
 
@@ -759,10 +759,10 @@ impl<'a> propagator::Constants<'a> {
                 let a = p28 * (1.0 - self.c1 * t).powi(2);
                 Ok((
                     propagator::Orbit {
-                        inclination: inclination,
-                        right_ascension: right_ascension,
-                        eccentricity: eccentricity,
-                        argument_of_perigee: argument_of_perigee,
+                        inclination,
+                        right_ascension,
+                        eccentricity,
+                        argument_of_perigee,
 
                         // M = p₂₉ + (δMₛ + δMₗ) + n₀" k₁ t²
                         mean_anomaly: p29

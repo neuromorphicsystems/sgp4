@@ -224,7 +224,7 @@ pub(crate) fn perturbations_and_dots(
 
             // kₓ₁₁ = - 2 pₓ₁ (Zₓ₂₃ - Zₓ₂₁)
             kx11: -2.0 * px1 * (zx23 - zx21),
-            third_body_mean_anomaly_0: third_body_mean_anomaly_0,
+            third_body_mean_anomaly_0,
         },
         Dots {
             // İₓ = pₓ₁ nₓ (Zₓ₁₁ + Zₓ₁₃)

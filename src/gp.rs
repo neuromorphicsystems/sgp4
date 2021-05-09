@@ -38,7 +38,7 @@ impl Error {
     /// # }
     /// ```
     pub fn new(message: String) -> Error {
-        Error { message: message }
+        Error { message }
     }
 }
 
@@ -356,8 +356,8 @@ impl Elements {
             }
         }
         Ok(Elements {
-            object_name: object_name,
-            norad_id: norad_id,
+            object_name,
+            norad_id,
             classification: match line1[7] {
                 b'U' => Classification::Unclassified,
                 b'C' => Classification::Classified,
