@@ -234,7 +234,7 @@ where
     match serde_json::value::Value::deserialize(deserializer)? {
         serde_json::value::Value::Number(number) => number
             .as_u64()
-            .ok_or(serde::de::Error::custom("parsing the number as u64 failed")),
+            .ok_or_else(|| serde::de::Error::custom("parsing the number as u64 failed")),
         serde_json::value::Value::String(string) => {
             string.parse().map_err(serde::de::Error::custom)
         }
@@ -265,7 +265,7 @@ where
     match serde_json::value::Value::deserialize(deserializer)? {
         serde_json::value::Value::Number(number) => number
             .as_f64()
-            .ok_or(serde::de::Error::custom("parsing the number as f64 failed")),
+            .ok_or_else(|| serde::de::Error::custom("parsing the number as f64 failed")),
         serde_json::value::Value::String(string) => {
             string.parse().map_err(serde::de::Error::custom)
         }
