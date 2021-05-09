@@ -2,8 +2,8 @@ use crate::gp;
 use crate::model;
 use crate::propagator;
 
-pub(crate) fn constants<'a>(
-    geopotential: &'a model::Geopotential,
+pub(crate) fn constants(
+    geopotential: &model::Geopotential,
     drag_term: f64,
     orbit_0: propagator::Orbit,
     p1: f64,
@@ -23,7 +23,7 @@ pub(crate) fn constants<'a>(
     p9: f64,
     p14: f64,
     p15: f64,
-) -> propagator::Constants<'a> {
+) -> propagator::Constants {
     propagator::Constants {
         geopotential,
 

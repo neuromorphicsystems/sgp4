@@ -218,8 +218,8 @@ impl ResonanceState {
     }
 }
 
-pub(crate) fn constants<'a>(
-    geopotential: &'a model::Geopotential,
+pub(crate) fn constants(
+    geopotential: &model::Geopotential,
     epoch_to_sidereal_time: impl Fn(f64) -> f64,
     epoch: f64,
     orbit_0: propagator::Orbit,
@@ -234,7 +234,7 @@ pub(crate) fn constants<'a>(
     p2: f64,
     p14: f64,
     p15: f64,
-) -> propagator::Constants<'a> {
+) -> propagator::Constants {
     // d₁₉₀₀ = 365.25 (y₂₀₀₀ + 100)
     let d1900 = (epoch + 100.0) * 365.25;
     let (solar_perturbations, solar_dots) = third_body::perturbations_and_dots(
