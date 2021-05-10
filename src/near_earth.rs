@@ -2,6 +2,7 @@ use crate::gp;
 use crate::model;
 use crate::propagator;
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn constants(
     geopotential: &model::Geopotential,
     drag_term: f64,
@@ -155,6 +156,7 @@ pub(crate) fn constants(
 }
 
 impl<'a> propagator::Constants<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn near_earth_orbital_elements(
         &self,
         a0: f64,

@@ -42,6 +42,7 @@ pub(crate) struct Dots {
 // third_body_mean_motion: the third body's mean motion nₓ
 // p1: the constant p₁ = 1 − e₀²
 // b0: the constant β₀ = p₁¹ᐟ²
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn perturbations_and_dots(
     inclination_0: f64,
     eccentricity_0: f64,

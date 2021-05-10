@@ -80,6 +80,7 @@ impl ResonanceState {
         self.t
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn integrate(
         &mut self,
         geopotential: &model::Geopotential,
@@ -220,6 +221,7 @@ impl ResonanceState {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn constants(
     geopotential: &model::Geopotential,
     epoch_to_sidereal_time: impl Fn(f64) -> f64,
@@ -628,6 +630,7 @@ pub(crate) fn constants(
 }
 
 impl<'a> propagator::Constants<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn deep_space_orbital_elements(
         &self,
         eccentricity_dot: f64,
