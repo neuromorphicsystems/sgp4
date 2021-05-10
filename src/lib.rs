@@ -145,12 +145,12 @@ impl Orbit {
                 ))
             } else {
                 Ok(propagator::Orbit {
-                    inclination: inclination,
-                    right_ascension: right_ascension,
-                    eccentricity: eccentricity,
-                    argument_of_perigee: argument_of_perigee,
-                    mean_anomaly: mean_anomaly,
-                    mean_motion: mean_motion,
+                    inclination,
+                    right_ascension,
+                    eccentricity,
+                    argument_of_perigee,
+                    mean_anomaly,
+                    mean_motion,
                 })
             }
         }
@@ -526,6 +526,7 @@ impl<'a> Constants<'a> {
     /// #     Ok(())
     /// # }
     /// ```
+    #[allow(clippy::many_single_char_names)]
     pub fn propagate_from_state(
         &self,
         t: f64,

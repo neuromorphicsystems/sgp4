@@ -2,8 +2,8 @@ use crate::gp;
 use crate::model;
 use crate::propagator;
 
-pub(crate) fn constants<'a>(
-    geopotential: &'a model::Geopotential,
+pub(crate) fn constants(
+    geopotential: &model::Geopotential,
     drag_term: f64,
     orbit_0: propagator::Orbit,
     p1: f64,
@@ -23,9 +23,9 @@ pub(crate) fn constants<'a>(
     p9: f64,
     p14: f64,
     p15: f64,
-) -> propagator::Constants<'a> {
+) -> propagator::Constants {
     propagator::Constants {
-        geopotential: geopotential,
+        geopotential,
 
         // Ω̇ = p₁₄
         right_ascension_dot: p14,
@@ -35,12 +35,12 @@ pub(crate) fn constants<'a>(
 
         // Ṁ = p₁₅
         mean_anomaly_dot: p15,
-        c1: c1,
-        c4: c4,
-        k0: k0,
-        k1: k1,
+        c1,
+        c4,
+        k0,
+        k1,
         method: propagator::Method::NearEarth {
-            a0: a0,
+            a0,
 
             //        1 J₃
             // k₂ = - - -- sin I₀
@@ -72,7 +72,7 @@ pub(crate) fn constants<'a>(
                     * (3.0 + 5.0 * p1)
                     / 1.5e-12
             },
-            k6: k6,
+            k6,
 
             // p₃ < 220 / (aₑ + 1)
             high_altitude: if p3 < 220.0 / geopotential.ae + 1.0 {
@@ -100,10 +100,10 @@ pub(crate) fn constants<'a>(
                             * (1.0
                                 + 2.75 * (eta.powi(2) + eta * orbit_0.eccentricity)
                                 + eta * orbit_0.eccentricity * eta.powi(2))),
-                    d2: d2,
-                    d3: d3,
-                    d4: d4,
-                    eta: eta,
+                    d2,
+                    d3,
+                    d4,
+                    eta,
 
                     // k₇ = sin M₀
                     k7: orbit_0.mean_anomaly.sin(),
@@ -150,7 +150,7 @@ pub(crate) fn constants<'a>(
                 }
             },
         },
-        orbit_0: orbit_0,
+        orbit_0,
     }
 }
 
@@ -218,7 +218,7 @@ impl<'a> propagator::Constants<'a> {
                 )
             }
         };
-        if p27 >= 1.0 || p27 < -0.001 {
+        if !(-0.001..1.0).contains(&p27) {
             Err(gp::Error::new("diverging eccentricity".to_owned()))
         } else {
             // e = │ 10⁻⁶ if p₂₇ < 10⁻⁶
@@ -231,9 +231,9 @@ impl<'a> propagator::Constants<'a> {
 
                     // Ω = p₂₂
                     right_ascension: p22,
-                    eccentricity: eccentricity,
-                    argument_of_perigee: argument_of_perigee,
-                    mean_anomaly: mean_anomaly,
+                    eccentricity,
+                    argument_of_perigee,
+                    mean_anomaly,
 
                     // n = kₑ / a³ᐟ²
                     mean_motion: self.geopotential.ke / a.powf(1.5),

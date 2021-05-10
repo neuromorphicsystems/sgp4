@@ -218,8 +218,8 @@ impl ResonanceState {
     }
 }
 
-pub(crate) fn constants<'a>(
-    geopotential: &'a model::Geopotential,
+pub(crate) fn constants(
+    geopotential: &model::Geopotential,
     epoch_to_sidereal_time: impl Fn(f64) -> f64,
     epoch: f64,
     orbit_0: propagator::Orbit,
@@ -234,7 +234,7 @@ pub(crate) fn constants<'a>(
     p2: f64,
     p14: f64,
     p15: f64,
-) -> propagator::Constants<'a> {
+) -> propagator::Constants {
     // d₁₉₀₀ = 365.25 (y₂₀₀₀ + 100)
     let d1900 = (epoch + 100.0) * 365.25;
     let (solar_perturbations, solar_dots) = third_body::perturbations_and_dots(
@@ -315,7 +315,7 @@ pub(crate) fn constants<'a>(
         b0,
     );
     propagator::Constants {
-        geopotential: geopotential,
+        geopotential,
 
         // Ω̇ = p₁₄ + (Ω̇ₛ + Ω̇ₗ)
         right_ascension_dot: p14 + (solar_dots.right_ascension + lunar_dots.right_ascension),
@@ -326,15 +326,15 @@ pub(crate) fn constants<'a>(
 
         // Ṁ = p₁₅ + (Ṁₛ + Ṁₗ)
         mean_anomaly_dot: p15 + (solar_dots.mean_anomaly + lunar_dots.mean_anomaly),
-        c1: c1,
-        c4: c4,
-        k0: k0,
-        k1: k1,
+        c1,
+        c4,
+        k0,
+        k1,
         method: propagator::Method::DeepSpace {
             eccentricity_dot: solar_dots.eccentricity + lunar_dots.eccentricity,
             inclination_dot: solar_dots.inclination + lunar_dots.inclination,
-            solar_perturbations: solar_perturbations,
-            lunar_perturbations: lunar_perturbations,
+            solar_perturbations,
+            lunar_perturbations,
             resonant: if (orbit_0.mean_motion < 0.0052359877 && orbit_0.mean_motion > 0.0034906585)
                 || (orbit_0.mean_motion >= 8.26e-3
                     && orbit_0.mean_motion <= 9.24e-3
@@ -356,7 +356,7 @@ pub(crate) fn constants<'a>(
                             + (solar_dots.argument_of_perigee + lunar_dots.argument_of_perigee)
                             + (solar_dots.right_ascension + lunar_dots.right_ascension)
                             - orbit_0.mean_motion,
-                        sidereal_time_0: sidereal_time_0,
+                        sidereal_time_0,
                         resonance: {
                             // p₁₇ = 3 (n / a₀")²
                             let p17 = 3.0 * (orbit_0.mean_motion / a0).powi(2);
@@ -412,7 +412,7 @@ pub(crate) fn constants<'a>(
                                 * (p14 + (solar_dots.right_ascension + lunar_dots.right_ascension)
                                     - SIDEREAL_SPEED)
                             - orbit_0.mean_motion,
-                        sidereal_time_0: sidereal_time_0,
+                        sidereal_time_0,
                         resonance: {
                             // p₁₈ = 3 n₀"² / a₀"²
                             let p18 = 3.0 * orbit_0.mean_motion.powi(2) * (1.0 / a0).powi(2);
@@ -612,16 +612,16 @@ pub(crate) fn constants<'a>(
                                         * (-2.0 - 8.0 * p1
                                             + p1.powi(2) * (12.0 + 8.0 * p1 - 10.0 * p1.powi(2))))
                                     * g533,
-                                k14: k14,
+                                k14,
                             }
                         },
                     }
                 }
             } else {
-                propagator::Resonant::No { a0: a0 }
+                propagator::Resonant::No { a0 }
             },
         },
-        orbit_0: orbit_0,
+        orbit_0,
     }
 }
 
@@ -743,14 +743,14 @@ impl<'a> propagator::Constants<'a> {
 
         // p₃₁ = e₀ + ė t - C₄ t
         let p31 = self.orbit_0.eccentricity + eccentricity_dot * t - self.c4 * t;
-        if p31 >= 1.0 || p31 < -0.001 {
+        if !(-0.001..1.0).contains(&p31) {
             Err(gp::Error::new("diverging eccentricity".to_owned()))
         } else {
             // e = │ 10⁻⁶ + (δeₛ + δeₗ) if p₃₁ < 10⁻⁶
             //     │ p₃₁ + (δeₛ + δeₗ)  otherwise
             let eccentricity =
                 (p31).max(1.0e-6) + (solar_delta_eccentricity + lunar_delta_eccentricity);
-            if eccentricity < 0.0 || eccentricity > 1.0 {
+            if !(0.0..=1.0).contains(&eccentricity) {
                 Err(gp::Error::new(
                     "diverging perturbed eccentricity".to_owned(),
                 ))
@@ -759,10 +759,10 @@ impl<'a> propagator::Constants<'a> {
                 let a = p28 * (1.0 - self.c1 * t).powi(2);
                 Ok((
                     propagator::Orbit {
-                        inclination: inclination,
-                        right_ascension: right_ascension,
-                        eccentricity: eccentricity,
-                        argument_of_perigee: argument_of_perigee,
+                        inclination,
+                        right_ascension,
+                        eccentricity,
+                        argument_of_perigee,
 
                         // M = p₂₉ + (δMₛ + δMₗ) + n₀" k₁ t²
                         mean_anomaly: p29

@@ -38,7 +38,7 @@ impl Error {
     /// # }
     /// ```
     pub fn new(message: String) -> Error {
-        Error { message: message }
+        Error { message }
     }
 }
 
@@ -85,10 +85,10 @@ trait DecimalPointAssumedRepresentation {
 impl DecimalPointAssumedRepresentation for [u8] {
     fn parse_decimal_point_assumed(&self) -> Result<f64> {
         let trimmed = std::str::from_utf8(self)?.trim_start();
-        if trimmed.starts_with("-") {
-            Ok(format!("-.{}", &trimmed[1..]).parse::<f64>()?)
-        } else if trimmed.starts_with("+") {
-            Ok(format!(".{}", &trimmed[1..]).parse::<f64>()?)
+        if let Some(stripped) = trimmed.strip_prefix('-') {
+            Ok(format!("-.{}", stripped).parse::<f64>()?)
+        } else if let Some(stripped) = trimmed.strip_prefix('+') {
+            Ok(format!(".{}", stripped).parse::<f64>()?)
         } else {
             Ok(format!(".{}", trimmed).parse::<f64>()?)
         }
@@ -234,7 +234,7 @@ where
     match serde_json::value::Value::deserialize(deserializer)? {
         serde_json::value::Value::Number(number) => number
             .as_u64()
-            .ok_or(serde::de::Error::custom("parsing the number as u64 failed")),
+            .ok_or_else(|| serde::de::Error::custom("parsing the number as u64 failed")),
         serde_json::value::Value::String(string) => {
             string.parse().map_err(serde::de::Error::custom)
         }
@@ -265,7 +265,7 @@ where
     match serde_json::value::Value::deserialize(deserializer)? {
         serde_json::value::Value::Number(number) => number
             .as_f64()
-            .ok_or(serde::de::Error::custom("parsing the number as f64 failed")),
+            .ok_or_else(|| serde::de::Error::custom("parsing the number as f64 failed")),
         serde_json::value::Value::String(string) => {
             string.parse().map_err(serde::de::Error::custom)
         }
@@ -344,7 +344,7 @@ impl Elements {
                 .iter()
                 .fold(0, |accumulator, character| match character {
                     b'-' => accumulator + 1,
-                    character if character >= &b'0' && character <= &b'9' => {
+                    character if (&b'0'..=&b'9').contains(&character) => {
                         accumulator + (character - b'0') as u16
                     }
                     _ => accumulator,
@@ -356,18 +356,15 @@ impl Elements {
             }
         }
         Ok(Elements {
-            object_name: object_name,
-            norad_id: norad_id,
+            object_name,
+            norad_id,
             classification: match line1[7] {
                 b'U' => Classification::Unclassified,
                 b'C' => Classification::Classified,
                 b'S' => Classification::Secret,
                 _ => return Err(Error::new("unknown classification".to_owned())),
             },
-            international_designator: if line1[9..17]
-                .iter()
-                .all(|character| *character == ' ' as u8)
-            {
+            international_designator: if line1[9..17].iter().all(|character| *character == b' ') {
                 None
             } else {
                 Some(format!(
