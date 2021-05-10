@@ -5,6 +5,7 @@ use crate::third_body;
 use std::cmp::Ordering;
 
 // θ̇ = 4.37526908801129966 × 10⁻³ rad.min⁻¹
+#[allow(clippy::excessive_precision)]
 const SIDEREAL_SPEED: f64 = 4.37526908801129966e-3;
 
 // eₛ = 0.01675
@@ -96,6 +97,7 @@ impl ResonanceState {
             panic!("the resonance integration state must be manually reset if the target times are non-monotonic");
         }
         // θ = θ₀ + 4.37526908801129966 × 10⁻³ t rem 2π
+        #[allow(clippy::excessive_precision)]
         let sidereal_time =
             (sidereal_time_0 + t * 4.37526908801129966e-3) % (2.0 * std::f64::consts::PI);
         let (delta_t, ordering) = if t > 0.0 {
