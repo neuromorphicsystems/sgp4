@@ -1,40 +1,42 @@
 //! This crate implements the SGP4 algorithm for satellite propagation.
 //!
-//! It also provides methods to parse both Two-Line Element Set (TLE) and Orbit Mean-Elements Message (OMM) data.
+//! It also provides methods to parse Two-Line Element Set (TLE) and Orbit Mean-Elements Message (OMM) data.
 //!
 //! A UTF-8 transcript of the mathematical expressions that compose SGP4
 //! can be found in the repository [https://github.com/neuromorphicsystems/sgp4](https://github.com/neuromorphicsystems/sgp4).
 //!
 //! # Example
 //!
-//! The following standalone program downloads the lastest stations OMMs from Celestrak
-//! and predicts the stations' positions and velocities after 12 h and 24 h.
+//! The following standalone program downloads the lastest Galileo OMMs from Celestrak
+//! and predicts the satellites' positions and velocities after 12 h and 24 h.
 //!
 //! ```
 //! fn main() -> sgp4::Result<()> {
-//!     let response = ureq::get("https://celestrak.com/NORAD/elements/gp.php")
-//!         .query("GROUP", "stations")
+//!     match ureq::get("https://celestrak.com/NORAD/elements/gp.php")
+//!         .query("GROUP", "galileo")
 //!         .query("FORMAT", "json")
-//!         .call();
-//!     if response.error() {
-//!         Err(sgp4::Error::new(format!(
-//!             "network error {}: {}",
-//!             response.status(),
-//!             response.into_string()?
-//!         )))
-//!     } else {
-//!         let elements_group: Vec<sgp4::Elements> = response.into_json_deserialize()?;
-//!         for elements in &elements_group {
-//!             println!("{}", elements.object_name.as_ref().unwrap());
-//!             let constants = sgp4::Constants::from_elements(elements)?;
-//!             for hours in &[12, 24] {
-//!                 println!("    t = {} min", hours * 60);
-//!                 let prediction = constants.propagate((hours * 60) as f64)?;
-//!                 println!("        r = {:?} km", prediction.position);
-//!                 println!("        ṙ = {:?} km.s⁻¹", prediction.velocity);
+//!         .call()
+//!     {
+//!         Ok(response) => {
+//!             let elements_group: Vec<sgp4::Elements> = response.into_json()?;
+//!             for elements in &elements_group {
+//!                 println!("{}", elements.object_name.as_ref().unwrap());
+//!                 let constants = sgp4::Constants::from_elements(elements)?;
+//!                 for hours in &[12, 24] {
+//!                     println!("    t = {} min", hours * 60);
+//!                     let prediction = constants.propagate((hours * 60) as f64)?;
+//!                     println!("        r = {:?} km", prediction.position);
+//!                     println!("        ṙ = {:?} km.s⁻¹", prediction.velocity);
+//!                 }
 //!             }
+//!             Ok(())
 //!         }
-//!         Ok(())
+//!         Err(ureq::Error::Status(code, response)) => Err(sgp4::Error::new(format!(
+//!             "network error {}: {}",
+//!             code,
+//!             response.into_string()?
+//!         ))),
+//!         Err(error) => Err(sgp4::Error::new(error.to_string())),
 //!     }
 //! }
 //! ```

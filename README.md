@@ -1,4 +1,7 @@
-# SGP4
+```toml
+[dependencies]
+sgp4 = "0.6"
+```
 
 The SGP4 algorithm, ported to Rust from the reference Celestrak implementation [[1]](#1).
 
@@ -8,73 +11,98 @@ The numerical predictions are almost identical to those of the Celestrak impleme
 
 We drew inspiration from the incomplete https://github.com/natronics/rust-sgp4 to write mathematical expressions using UTF-8 characters.
 
-## Cargo
-
-```
-[dependencies]
-sgp4 = "0.5"
-```
+- [Documentation](#documentation)
+- [Benchmark](#benchmark)
+- [Variables and mathematical expressions](#variables-and-mathematical-expressions)
+  - [Variables](#variables)
+    - [Initialization variables](#initialization-variables)
+    - [Propagation variables](#propagation-variables)
+    - [Third-body initialization variables](#third-body-initialization-variables)
+    - [Third-body propagation variables](#third-body-propagation-variables)
+  - [Mathematical expressions](#mathematical-expressions)
+    - [UT1 to Julian conversion](#ut1-to-julian-conversion)
+    - [Common initialization](#common-initialization)
+    - [Near earth initialization](#near-earth-initialization)
+    - [High altitude near earth initialization](#high-altitude-near-earth-initialization)
+    - [Elliptic high altitude near earth initialization](#elliptic-high-altitude-near-earth-initialization)
+    - [Deep space initialization](#deep-space-initialization)
+    - [Third body perturbations](#third-body-perturbations)
+    - [Resonant deep space initialization](#resonant-deep-space-initialization)
+    - [Geosynchronous deep space initialization](#geosynchronous-deep-space-initialization)
+    - [Molniya deep space initialization](#molniya-deep-space-initialization)
+    - [Common propagation](#common-propagation)
+    - [Near earth propagation](#near-earth-propagation)
+    - [High altitude near earth propagation](#high-altitude-near-earth-propagation)
+    - [Deep space propagation](#deep-space-propagation)
+    - [Third body propagation](#third-body-propagation)
+    - [Resonant deep space propagation](#resonant-deep-space-propagation)
+    - [Lyddane deep space propagation](#lyddane-deep-space-propagation)
+- [References](#references)
 
 ## Documentation
 
-The code documentation is hosted at [https://docs.rs/sgp4/0.5.0/sgp4/](https://docs.rs/sgp4/0.5.0/sgp4/).
+The code documentation is hosted at [https://docs.rs/sgp4/0.6.0/sgp4/](https://docs.rs/sgp4/0.6.0/sgp4/).
 
-Examples can be found in this repository's *examples* directory:
-- *examples/celestrak.rs* retrieves the most recent "stations" OMMs from Celestrak and propagates them
-- *examples/omm.rs* parses and propagates a JSON-encoded OMM
-- *examples/space-track.rs* retrieves the 20 most recent launches OMMs from Space-Track and propagates them
-- *examples/tle.rs* parses and propagates a TLE
-- *examples/tle_afspc.rs* parses and propagates a TLE using the AFSPC compatibility mode
-- *examples/advanced.rs* leverages the advanced API to (marginally) accelerate the propagation of deep space resonant satellites
+Examples can be found in this repository's _examples_ directory:
 
-To run an example (here *examples/celestrak.rs*), use:
+-   _examples/celestrak.rs_ retrieves the most recent Galileo OMMs from Celestrak and propagates them
+-   _examples/omm.rs_ parses and propagates a JSON-encoded OMM
+-   _examples/space-track.rs_ retrieves the 20 most recent launches OMMs from Space-Track and propagates them
+-   _examples/tle.rs_ parses and propagates a TLE
+-   _examples/tle_afspc.rs_ parses and propagates a TLE using the AFSPC compatibility mode
+-   _examples/advanced.rs_ leverages the advanced API to (marginally) accelerate the propagation of deep space resonant satellites
+
+To run an example (here _examples/celestrak.rs_), use:
+
 ```sh
 cargo run --example celestrak
 ```
 
-To run the Space-Track example, you must first assign your Space-Track.org credentials to the fields `identity` and `password` (see lines 3 and 4 in *examples/space-track.rs*).
+To run the Space-Track example, you must first assign your Space-Track.org credentials to the fields `identity` and `password` (see lines 3 and 4 in _examples/space-track.rs_).
 
 ## Benchmark
 
 The benchmark code is available at https://github.com/neuromorphicsystems/sgp4-benchmark. It compares two SGP4 implementations in different configurations:
-- `cpp`: the Celestrak implementation [[1]](#1) in improved mode
-- `cpp-afspc`: the Celestrak implementation [[1]](#1) in AFSPC compatibility mode
-- `cpp-fastmath`: the Celestrak implementation [[1]](#1) in improved mode with the `fast-math` compiler flag
-- `cpp-afspc-fastmath`: the Celestrak implementation [[1]](#1) in AFSPC compatibility mode with the `fast-math` compiler flag
-- `rust`: our Rust implementation in default mode
-- `rust-afspc`: our Rust implementation in AFSPC compatibility mode
 
-This benchmark must not be confused with the code in this repository's *bench* directory. The latter considers only a small subset of the Celestrak catalogue (the tests recommended in [[1]](#1)) and does not measure the original C++ implementation.
+-   `cpp`: the Celestrak implementation [[1]](#1) in improved mode
+-   `cpp-afspc`: the Celestrak implementation [[1]](#1) in AFSPC compatibility mode
+-   `cpp-fastmath`: the Celestrak implementation [[1]](#1) in improved mode with the `fast-math` compiler flag
+-   `cpp-afspc-fastmath`: the Celestrak implementation [[1]](#1) in AFSPC compatibility mode with the `fast-math` compiler flag
+-   `rust`: our Rust implementation in default mode
+-   `rust-afspc`: our Rust implementation in AFSPC compatibility mode
+
+This benchmark must not be confused with the code in this repository's _bench_ directory. The latter considers only a small subset of the Celestrak catalogue (the tests recommended in [[1]](#1)) and does not measure the original C++ implementation.
 
 The present results were obtained using a machine with the following configuration:
-- __CPU__ - Intel Core i7-8700 @ 3.20GHz
-- __RAM__ - Kingston DDR4 @ 2.667 GHz
-- __OS__ - Ubuntu 16.04
-- __Compilers__ - Rust 1.44.1 and gcc 9.3.0
+
+-   **CPU** - Intel Core i7-8700 @ 3.20GHz
+-   **RAM** - Kingston DDR4 @ 2.667 GHz
+-   **OS** - Ubuntu 16.04
+-   **Compilers** - Rust 1.44.1 and gcc 9.3.0
 
 Accuracy measures the maximum propagation error of each implementation with respect to the reference implementation (`cpp-afspc`) over the full Celestrak catalogue (1 minute timestep over 24 hours).
 
 | implementation       | maximum position error | maximum speed error |
-|----------------------|------------------------|---------------------|
-| `cpp-afspc`          |            (reference) |         (reference) |
-| `cpp`                |                1.05 km |  1.30 × 10⁻³ km.s⁻¹ |
-| `cpp-fastmath`       |                1.05 km |  1.30 × 10⁻³ km.s⁻¹ |
-| `cpp-afspc-fastmath` |         4.21 × 10⁻⁸ km | 7.51 × 10⁻¹² km.s⁻¹ |
-| `rust`               |                1.05 km |  1.30 × 10⁻³ km.s⁻¹ |
-| `rust-afspc`         |         4.19 × 10⁻⁸ km | 7.46 × 10⁻¹² km.s⁻¹ |
+| -------------------- | ---------------------- | ------------------- |
+| `cpp-afspc`          | (reference)            | (reference)         |
+| `cpp`                | 1.05 km                | 1.30 × 10⁻³ km.s⁻¹  |
+| `cpp-fastmath`       | 1.05 km                | 1.30 × 10⁻³ km.s⁻¹  |
+| `cpp-afspc-fastmath` | 4.21 × 10⁻⁸ km         | 7.51 × 10⁻¹² km.s⁻¹ |
+| `rust`               | 1.05 km                | 1.30 × 10⁻³ km.s⁻¹  |
+| `rust-afspc`         | 4.19 × 10⁻⁸ km         | 7.46 × 10⁻¹² km.s⁻¹ |
 
 The Rust and C++ fast-math errors have the same order of magnitude. In both cases, they can be attributed to mathematically identical expressions implemented with different floating-point operations.
 
 Speed measures the time it takes to propagate every satellite in the Celestrak catalogue (1 minute timestep over 24 hours) using a single thread. 100 values are sampled per implementation.
 
 | implementation       | minimum | Q1     | median | Q3     | maximum | relative difference |
-|----------------------|---------|--------|--------|--------|---------|---------------------|
-| `cpp-afspc`          |  8.95 s | 9.02 s | 9.03 s | 9.06 s |  9.18 s |         (reference) |
-| `cpp`                |  8.95 s | 9.01 s | 9.04 s | 9.06 s |  9.25 s |               + 0 % |
-| `cpp-fastmath`       |  7.67 s | 7.74 s | 7.77 s | 7.79 s |  7.90 s |              - 14 % |
-| `cpp-afspc-fastmath` |  7.70 s | 7.74 s | 7.76 s | 7.79 s |  7.86 s |              - 14 % |
-| `rust`               |  8.36 s | 8.41 s | 8.43 s | 8.45 s |  8.53 s |               - 7 % |
-| `rust-afspc`         |  8.36 s | 8.41 s | 8.43 s | 8.46 s |  8.59 s |               - 7 % |
+| -------------------- | ------- | ------ | ------ | ------ | ------- | ------------------- |
+| `cpp-afspc`          | 8.95 s  | 9.02 s | 9.03 s | 9.06 s | 9.18 s  | (reference)         |
+| `cpp`                | 8.95 s  | 9.01 s | 9.04 s | 9.06 s | 9.25 s  | + 0 %               |
+| `cpp-fastmath`       | 7.67 s  | 7.74 s | 7.77 s | 7.79 s | 7.90 s  | - 14 %              |
+| `cpp-afspc-fastmath` | 7.70 s  | 7.74 s | 7.76 s | 7.79 s | 7.86 s  | - 14 %              |
+| `rust`               | 8.36 s  | 8.41 s | 8.43 s | 8.45 s | 8.53 s  | - 7 %               |
+| `rust-afspc`         | 8.36 s  | 8.41 s | 8.43 s | 8.46 s | 8.59 s  | - 7 %               |
 
 Rust fast-math support is a work in progress (see https://github.com/rust-lang/rust/issues/21690). Similarly to C++, it should have a very small impact on accuracy while providing a substantial speed gain.
 
@@ -97,295 +125,277 @@ The following tables list the variables used in the code and their associated ma
 
 The following variables depend solely on epoch elements.
 
-| variable                                | symbol         | description |
-|:----------------------------------------|:---------------|:------------|
-| `Elements::datetime.year()`             | `yᵤ`           | Gregorian calendar year |
-| `Elements::datetime.month()`            | `mᵤ`           | Gregorian calendar month in the range `[1, 12]` |
-| `Elements::datetime.day()`              | `dᵤ`           | Gregorian calendar day in the range `[1, 31]` |
-| `Elements::datetime.hour()`             | `hᵤ`           | Hours since midnight in the range `[0, 23]` |
-| `Elements::datetime.minute()`           | `minᵤ`         | Minutes since the hour in the range `[0, 59]` |
-| `Elements::datetime.second()`           | `sᵤ`           | Seconds since the minute in the range `[0, 59]` |
-| `Elements::datetime.nanosecond()`       | `nsᵤ`          | Nanoseconds since the second in the range `[0, 10⁹[` |
-| `epoch`                                 | `y₂₀₀₀`        | Julian years since UTC 1 January 2000 12h00 (J2000) |
-| `d1900`                                 | `d₁₉₀₀`        | Julian days since UTC 1 January 1900 12h00 (J1900) |
-| `d1970`                                 | `d₁₉₇₀`        | Julian days since UTC 1 January 1970 12h00 (J1970) |
-| `c2000`                                 | `c₂₀₀₀`        | Julian centuries since UTC 1 January 2000 12h00 (J2000) |
-| `geopotential.ae`                       | `aₑ`           | equatorial radius of the earth in km |
-| `geopotential.ke`                       | `kₑ`           | square root of the earth's gravitational parameter in earth radii³ min⁻² |
-| `geopotential.j2`                       | `J₂`           | un-normalised second zonal harmonic |
-| `geopotential.j3`                       | `J₃`           | un-normalised third zonal harmonic |
-| `geopotential.j4`                       | `J₄`           | un-normalised fourth zonal harmonic |
-| `kozai_mean_motion`                     | `n₀`           | mean number of orbits per day (Kozai convention) at epoch in rad.min⁻¹ |
-| `a1`                                    | `a₁`           | semi-major axis at epoch (Kozai convention) |
-| `p0`                                    | `p₀`           | partial expression of `𝛿₀` and `𝛿₁` |
-| `d1`                                    | `𝛿₁`           | used in the Kozai to Brouwer conversion |
-| `d0`                                    | `𝛿₀`           | used in the Kozai to Brouwer conversion |
-| `B*`                                    | `B*`           | radiation pressure coefficient in earth radii⁻¹ |
-| `orbit_0.inclination`                   | `I₀`           | angle between the equator and the orbit plane at epoch in rad |
-| `orbit_0.right_ascension`               | `Ω₀`           | angle between vernal equinox and the point where the orbit crosses the equatorial plane at epoch in rad |
-| `orbit_0.eccentricity`                  | `e₀`           | shape of the orbit at epoch |
-| `orbit_0.argument_of_perigee`           | `ω₀`           | angle between the ascending node and the orbit's point of closest approach to the earth at epoch in rad |
-| `orbit_0.mean_anomaly`                  | `M₀`           | angle of the satellite location measured from perigee at epoch in rad |
-| `orbit_0.mean_motion`                   | `n₀"`          | mean number of orbits per day (Brouwer convention) at epoch in rad.min⁻¹ |
-| `p1`                                    | `p₁`           | cosine of the inclination at epoch used in multiple expressions during initialization (`θ` in [[2]](#2), renamed to avoid confusion with the sidereal time) |
-| `p2`                                    | `p₂`           | partial expression of multiple initialization expressions |
-| `a0`                                    | `a₀"`          | semi-major axis at epoch (Brouwer convention) |
-| `p3`                                    | `p₃`           | perigee in earth radii |
-| `p4`                                    | `p₄`           | height of perigee in km |
-| `p5`                                    | `p₅`           | partial expression of `s` |
-| `s`                                     | `s`            | altitude parameter of the atmospheric drag expression |
-| `p6`                                    | `p₆`           | partial expression of the atmospheric drag |
-| `xi`                                    | `ξ`            | partial expression of multiple initialization expressions |
-| `p7`                                    | `p₇`           | partial expression of multiple initialization expressions |
-| `eta`                                   | `η`            | partial expression of multiple initialization expressions and of the argument of perigee and mean anomaly in eccentric high altitude near earth propagation |
-| `p8`                                    | `p₈`           | partial expression of multiple initialization expressions |
-| `p9`                                    | `p₉`           | partial expression of multiple initialization expressions |
-| `c1`                                    | `C₁`           | partial expression of multiple initializationa and propagation expressions |
-| `p10`                                   | `p₁₀`          | partial expression of multiple initialization expressions |
-| `b0`                                    | `β₀`           | partial expression of multiple initialization expressions |
-| `p11`                                   | `p₁₁`          | partial expression of multiple initialization expressions |
-| `p12`                                   | `p₁₂`          | partial expression of multiple initialization expressions |
-| `p13`                                   | `p₁₃`          | partial expression of multiple initialization expressions |
-| `p14`                                   | `p₁₄`          | partial expression of multiple initialization expressions |
-| `p15`                                   | `p₁₅`          | partial expression of multiple initialization expressions |
-| `k14`                                   | `k₁₄`          | first order coefficient of the argument of perigee before adding solar and lunar perturbations |
-| `c4`                                    | `C₄`           | partial expression of multiple initializationa and propagation expressions (differs from the `C₄` expression in [[2]](#2) by a factor B*) |
-| `right_ascension_dot`                   | `Ω̇`            | first order coefficient of the right ascension |
-| `argument_of_perigee_dot`               | `ω̇`            | first order coefficient of the argument of perigee |
-| `mean_anomaly_dot`                      | `Ṁ`            | first order coefficient of the mean anomaly |
-| `k0`                                    | `k₀`           | second order coefficient of the right ascension before adding perturbations |
-| `k1`                                    | `k₁`           | partial expression of the second order coefficient of the mean anomaly |
-| `k2`                                    | `k₂`           | partial expression of `aᵧₙ` in near earth propagation |
-| `k3`                                    | `k₃`           | partial expression of `rₖ`, `ṙₖ` and `rḟₖ` in near earth propagation |
-| `k4`                                    | `k₄`           | partial expression of `uₖ` in near earth propagation |
-| `k5`                                    | `k₅`           | partial expression of the initial Kepler variable `p₃₈` in near earth propagation |
-| `k6`                                    | `k₆`           | partial expression of multiple initialization expressions and of `rₖ` and `rḟₖ` in near earth propagation |
-| `d2`                                    | `D₂`           | partial expression of multiple near earth initialization expressions and of the semi-major axis in near earth propagation |
-| `p16`                                   | `p₁₆`          | partial expression of multiple near earth initialization expressions |
-| `d3`                                    | `D₃`           | partial expression of multiple near earth initialization expressions and of the semi-major axis in near earth propagation |
-| `d4`                                    | `D₄`           | partial expression of multiple near earth initialization expressions and of the semi-major axis in near earth propagation |
-| `c5`                                    | `C₅`           | partial expression of multiple initializationa and propagation expressions (differs from the `C₅` expression in [[2]](#2) by a factor B*)
-| `k7`                                    | `k₇`           | sine of the mean anomaly at epoch |
-| `k8`                                    | `k₈`           | partial expression of the mean anomaly third order coefficient in high altitude near earth propagation |
-| `k9`                                    | `k₉`           | partial expression of the mean anomaly fourth order coefficient in high altitude near earth propagation |
-| `k10`                                   | `k₁₀`          | partial expression of the mean anomaly fifth order coefficient in high altitude near earth propagation |
-| `k11`                                   | `k₁₁`           | partial expression of the argument of perigee and mean anomaly in eccentric high altitude near earth propagation |
-| `k12`                                   | `k₁₂`          | partial expression of the argument of perigee and mean anomaly in eccentric high altitude near earth propagation |
-| `k13`                                   | `k₁₃`          | partial expression of the argument of perigee and mean anomaly in eccentric high altitude near earth propagation |
-| `lunar_right_ascension_epsilon`         | `Ωₗₑ`           | lunar right ascension of the ascending node |
-| `lunar_right_ascension_sine`            | `sin Ωₗ`        | sine of the lunar right ascension of the ascending node referred to the equator |
-| `lunar_right_ascension_cosine`          | `cos Ωₗ`        | cosine of the lunar right ascension of the ascending node referred to the equator |
-| `lunar_argument_of_perigee`             | `ωₗ`            | lunar argument of perigee |
-| `sidereal_time_0`                       | `θ₀`           | Greenwich sidereal time at epoch |
-| `lambda_0`                              | `λ₀`           | Earth gravity resonance variable at epoch |
-| `lambda_dot_0`                          | `λ̇₀`           | time derivative of the Earth gravity resonance variable at epoch |
-| `p17`                                   | `p₁₇`          | partial expression of `𝛿ᵣ₁`, `𝛿ᵣ₂` and `𝛿ᵣ₃` |
-| `dr1`                                   | `𝛿ᵣ₁`          | first Earth gravity resonance coefficient for geosynchronous orbits (`𝛿₁` in [[2]](#2), renamed to avoid confusion with `𝛿₁` used in the Kozai to Brouwer conversion) |
-| `dr2`                                   | `𝛿ᵣ₂`          | second Earth gravity resonance coefficient for geosynchronous orbits (`𝛿₂` in [[2]](#2), renamed to match `𝛿ᵣ₁`) |
-| `dr3`                                   | `𝛿ᵣ₃`          | third Earth gravity resonance coefficient for geosynchronous orbits (`𝛿₃` in [[2]](#2), renamed to match `𝛿ᵣ₁`) |
-| `p18`                                   | `p₁₈`          | partial expression of `D₂₂₀₋₁` and `D₂₂₁₁` |
-| `p19`                                   | `p₁₉`          | partial expression of `D₃₂₁₀` and `D₃₂₂₂` |
-| `p20`                                   | `p₂₀`          | partial expression of `D₄₄₁₀` and `D₄₄₂₂` |
-| `p21`                                   | `p₂₁`          | partial expression of `D₅₂₂₀`, `D₅₂₃₂`, `D₅₄₂₁` and `D₅₄₃₃` |
-| `f220`                                  | `F₂₂₀`         | partial expression of `D₂₂₀₋₁` and `D₄₄₁₀` |
-| `g211`                                  | `G₂₁₁`         | partial expression of `D₂₂₁₁` |
-| `g310`                                  | `G₃₁₀`         | partial expression of `D₃₂₁₀` |
-| `g322`                                  | `G₃₂₂`         | partial expression of `D₃₂₂₂` |
-| `g410`                                  | `G₄₁₀`         | partial expession of `D₄₄₁₀` |
-| `g422`                                  | `G₄₂₂`         | partial expession of `D₄₄₂₂` |
-| `g520`                                  | `G₅₂₀`         | partial expression of `D₅₂₂₀` |
-| `g532`                                  | `G₅₃₂`         | partial expression of `D₅₂₃₂` |
-| `g521`                                  | `G₅₂₁`         | partial expression of `D₅₄₂₁` |
-| `g533`                                  | `G₅₃₃`         | partial expression of `D₅₄₃₃` |
-| `d220₋1`                                | `D₂₂₀₋₁`       | gravity resonance coefficient for Molniya orbits (the `Dₗₘₚₖ` expression in [[2]](#2) is missing a factor `l - 2p + k` from the original equation in [[4]](#4) with `k = -1` instead of `1`) |
-| `d2211`                                 | `D₂₂₁₁`        | gravity resonance coefficient for Molniya orbits (the `Dₗₘₚₖ` expression in [[2]](#2) is missing a factor `l - 2p + k` from the original equation in [[4]](#4)) |
-| `d3210`                                 | `D₃₂₁₀`        | see `D₂₂₁₁` |
-| `d3222`                                 | `D₃₂₂₂`        | see `D₂₂₁₁` |
-| `d4410`                                 | `D₄₄₁₀`        | see `D₂₂₁₁` |
-| `d4422`                                 | `D₄₄₂₂`        | see `D₂₂₁₁` |
-| `d5220`                                 | `D₅₂₂₀`        | see `D₂₂₁₁` |
-| `d5232`                                 | `D₅₂₃₂`        | see `D₂₂₁₁` |
-| `d5421`                                 | `D₅₄₂₁`        | see `D₂₂₁₁` |
-| `d5433`                                 | `D₅₄₃₃`        | see `D₂₂₁₁` |
+| variable                          | symbol   | description                                                                                                                                                                                  |
+| :-------------------------------- | :------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Elements::datetime.year()`       | `yᵤ`     | Gregorian calendar year                                                                                                                                                                      |
+| `Elements::datetime.month()`      | `mᵤ`     | Gregorian calendar month in the range `[1, 12]`                                                                                                                                              |
+| `Elements::datetime.day()`        | `dᵤ`     | Gregorian calendar day in the range `[1, 31]`                                                                                                                                                |
+| `Elements::datetime.hour()`       | `hᵤ`     | Hours since midnight in the range `[0, 23]`                                                                                                                                                  |
+| `Elements::datetime.minute()`     | `minᵤ`   | Minutes since the hour in the range `[0, 59]`                                                                                                                                                |
+| `Elements::datetime.second()`     | `sᵤ`     | Seconds since the minute in the range `[0, 59]`                                                                                                                                              |
+| `Elements::datetime.nanosecond()` | `nsᵤ`    | Nanoseconds since the second in the range `[0, 10⁹[`                                                                                                                                         |
+| `epoch`                           | `y₂₀₀₀`  | Julian years since UTC 1 January 2000 12h00 (J2000)                                                                                                                                          |
+| `d1900`                           | `d₁₉₀₀`  | Julian days since UTC 1 January 1900 12h00 (J1900)                                                                                                                                           |
+| `d1970`                           | `d₁₉₇₀`  | Julian days since UTC 1 January 1970 12h00 (J1970)                                                                                                                                           |
+| `c2000`                           | `c₂₀₀₀`  | Julian centuries since UTC 1 January 2000 12h00 (J2000)                                                                                                                                      |
+| `geopotential.ae`                 | `aₑ`     | equatorial radius of the earth in km                                                                                                                                                         |
+| `geopotential.ke`                 | `kₑ`     | square root of the earth's gravitational parameter in earth radii³ min⁻²                                                                                                                     |
+| `geopotential.j2`                 | `J₂`     | un-normalised second zonal harmonic                                                                                                                                                          |
+| `geopotential.j3`                 | `J₃`     | un-normalised third zonal harmonic                                                                                                                                                           |
+| `geopotential.j4`                 | `J₄`     | un-normalised fourth zonal harmonic                                                                                                                                                          |
+| `kozai_mean_motion`               | `n₀`     | mean number of orbits per day (Kozai convention) at epoch in rad.min⁻¹                                                                                                                       |
+| `a1`                              | `a₁`     | semi-major axis at epoch (Kozai convention)                                                                                                                                                  |
+| `p0`                              | `p₀`     | partial expression of `𝛿₀` and `𝛿₁`                                                                                                                                                          |
+| `d1`                              | `𝛿₁`     | used in the Kozai to Brouwer conversion                                                                                                                                                      |
+| `d0`                              | `𝛿₀`     | used in the Kozai to Brouwer conversion                                                                                                                                                      |
+| `B*`                              | `B*`     | radiation pressure coefficient in earth radii⁻¹                                                                                                                                              |
+| `orbit_0.inclination`             | `I₀`     | angle between the equator and the orbit plane at epoch in rad                                                                                                                                |
+| `orbit_0.right_ascension`         | `Ω₀`     | angle between vernal equinox and the point where the orbit crosses the equatorial plane at epoch in rad                                                                                      |
+| `orbit_0.eccentricity`            | `e₀`     | shape of the orbit at epoch                                                                                                                                                                  |
+| `orbit_0.argument_of_perigee`     | `ω₀`     | angle between the ascending node and the orbit's point of closest approach to the earth at epoch in rad                                                                                      |
+| `orbit_0.mean_anomaly`            | `M₀`     | angle of the satellite location measured from perigee at epoch in rad                                                                                                                        |
+| `orbit_0.mean_motion`             | `n₀"`    | mean number of orbits per day (Brouwer convention) at epoch in rad.min⁻¹                                                                                                                     |
+| `p1`                              | `p₁`     | cosine of the inclination at epoch used in multiple expressions during initialization (`θ` in [[2]](#2), renamed to avoid confusion with the sidereal time)                                  |
+| `p2`                              | `p₂`     | partial expression of multiple initialization expressions                                                                                                                                    |
+| `a0`                              | `a₀"`    | semi-major axis at epoch (Brouwer convention)                                                                                                                                                |
+| `p3`                              | `p₃`     | perigee in earth radii                                                                                                                                                                       |
+| `p4`                              | `p₄`     | height of perigee in km                                                                                                                                                                      |
+| `p5`                              | `p₅`     | partial expression of `s`                                                                                                                                                                    |
+| `s`                               | `s`      | altitude parameter of the atmospheric drag expression                                                                                                                                        |
+| `p6`                              | `p₆`     | partial expression of the atmospheric drag                                                                                                                                                   |
+| `xi`                              | `ξ`      | partial expression of multiple initialization expressions                                                                                                                                    |
+| `p7`                              | `p₇`     | partial expression of multiple initialization expressions                                                                                                                                    |
+| `eta`                             | `η`      | partial expression of multiple initialization expressions and of the argument of perigee and mean anomaly in eccentric high altitude near earth propagation                                  |
+| `p8`                              | `p₈`     | partial expression of multiple initialization expressions                                                                                                                                    |
+| `p9`                              | `p₉`     | partial expression of multiple initialization expressions                                                                                                                                    |
+| `c1`                              | `C₁`     | partial expression of multiple initializationa and propagation expressions                                                                                                                   |
+| `p10`                             | `p₁₀`    | partial expression of multiple initialization expressions                                                                                                                                    |
+| `b0`                              | `β₀`     | partial expression of multiple initialization expressions                                                                                                                                    |
+| `p11`                             | `p₁₁`    | partial expression of multiple initialization expressions                                                                                                                                    |
+| `p12`                             | `p₁₂`    | partial expression of multiple initialization expressions                                                                                                                                    |
+| `p13`                             | `p₁₃`    | partial expression of multiple initialization expressions                                                                                                                                    |
+| `p14`                             | `p₁₄`    | partial expression of multiple initialization expressions                                                                                                                                    |
+| `p15`                             | `p₁₅`    | partial expression of multiple initialization expressions                                                                                                                                    |
+| `k14`                             | `k₁₄`    | first order coefficient of the argument of perigee before adding solar and lunar perturbations                                                                                               |
+| `c4`                              | `C₄`     | partial expression of multiple initializationa and propagation expressions (differs from the `C₄` expression in [[2]](#2) by a factor B\*)                                                   |
+| `right_ascension_dot`             | `Ω̇`      | first order coefficient of the right ascension                                                                                                                                               |
+| `argument_of_perigee_dot`         | `ω̇`      | first order coefficient of the argument of perigee                                                                                                                                           |
+| `mean_anomaly_dot`                | `Ṁ`      | first order coefficient of the mean anomaly                                                                                                                                                  |
+| `k0`                              | `k₀`     | second order coefficient of the right ascension before adding perturbations                                                                                                                  |
+| `k1`                              | `k₁`     | partial expression of the second order coefficient of the mean anomaly                                                                                                                       |
+| `k2`                              | `k₂`     | partial expression of `aᵧₙ` in near earth propagation                                                                                                                                        |
+| `k3`                              | `k₃`     | partial expression of `rₖ`, `ṙₖ` and `rḟₖ` in near earth propagation                                                                                                                         |
+| `k4`                              | `k₄`     | partial expression of `uₖ` in near earth propagation                                                                                                                                         |
+| `k5`                              | `k₅`     | partial expression of the initial Kepler variable `p₃₈` in near earth propagation                                                                                                            |
+| `k6`                              | `k₆`     | partial expression of multiple initialization expressions and of `rₖ` and `rḟₖ` in near earth propagation                                                                                    |
+| `d2`                              | `D₂`     | partial expression of multiple near earth initialization expressions and of the semi-major axis in near earth propagation                                                                    |
+| `p16`                             | `p₁₆`    | partial expression of multiple near earth initialization expressions                                                                                                                         |
+| `d3`                              | `D₃`     | partial expression of multiple near earth initialization expressions and of the semi-major axis in near earth propagation                                                                    |
+| `d4`                              | `D₄`     | partial expression of multiple near earth initialization expressions and of the semi-major axis in near earth propagation                                                                    |
+| `c5`                              | `C₅`     | partial expression of multiple initializationa and propagation expressions (differs from the `C₅` expression in [[2]](#2) by a factor B\*)                                                   |
+| `k7`                              | `k₇`     | sine of the mean anomaly at epoch                                                                                                                                                            |
+| `k8`                              | `k₈`     | partial expression of the mean anomaly third order coefficient in high altitude near earth propagation                                                                                       |
+| `k9`                              | `k₉`     | partial expression of the mean anomaly fourth order coefficient in high altitude near earth propagation                                                                                      |
+| `k10`                             | `k₁₀`    | partial expression of the mean anomaly fifth order coefficient in high altitude near earth propagation                                                                                       |
+| `k11`                             | `k₁₁`    | partial expression of the argument of perigee and mean anomaly in eccentric high altitude near earth propagation                                                                             |
+| `k12`                             | `k₁₂`    | partial expression of the argument of perigee and mean anomaly in eccentric high altitude near earth propagation                                                                             |
+| `k13`                             | `k₁₃`    | partial expression of the argument of perigee and mean anomaly in eccentric high altitude near earth propagation                                                                             |
+| `lunar_right_ascension_epsilon`   | `Ωₗₑ`    | lunar right ascension of the ascending node                                                                                                                                                  |
+| `lunar_right_ascension_sine`      | `sin Ωₗ` | sine of the lunar right ascension of the ascending node referred to the equator                                                                                                              |
+| `lunar_right_ascension_cosine`    | `cos Ωₗ` | cosine of the lunar right ascension of the ascending node referred to the equator                                                                                                            |
+| `lunar_argument_of_perigee`       | `ωₗ`     | lunar argument of perigee                                                                                                                                                                    |
+| `sidereal_time_0`                 | `θ₀`     | Greenwich sidereal time at epoch                                                                                                                                                             |
+| `lambda_0`                        | `λ₀`     | Earth gravity resonance variable at epoch                                                                                                                                                    |
+| `lambda_dot_0`                    | `λ̇₀`     | time derivative of the Earth gravity resonance variable at epoch                                                                                                                             |
+| `p17`                             | `p₁₇`    | partial expression of `𝛿ᵣ₁`, `𝛿ᵣ₂` and `𝛿ᵣ₃`                                                                                                                                                 |
+| `dr1`                             | `𝛿ᵣ₁`    | first Earth gravity resonance coefficient for geosynchronous orbits (`𝛿₁` in [[2]](#2), renamed to avoid confusion with `𝛿₁` used in the Kozai to Brouwer conversion)                        |
+| `dr2`                             | `𝛿ᵣ₂`    | second Earth gravity resonance coefficient for geosynchronous orbits (`𝛿₂` in [[2]](#2), renamed to match `𝛿ᵣ₁`)                                                                             |
+| `dr3`                             | `𝛿ᵣ₃`    | third Earth gravity resonance coefficient for geosynchronous orbits (`𝛿₃` in [[2]](#2), renamed to match `𝛿ᵣ₁`)                                                                              |
+| `p18`                             | `p₁₈`    | partial expression of `D₂₂₀₋₁` and `D₂₂₁₁`                                                                                                                                                   |
+| `p19`                             | `p₁₉`    | partial expression of `D₃₂₁₀` and `D₃₂₂₂`                                                                                                                                                    |
+| `p20`                             | `p₂₀`    | partial expression of `D₄₄₁₀` and `D₄₄₂₂`                                                                                                                                                    |
+| `p21`                             | `p₂₁`    | partial expression of `D₅₂₂₀`, `D₅₂₃₂`, `D₅₄₂₁` and `D₅₄₃₃`                                                                                                                                  |
+| `f220`                            | `F₂₂₀`   | partial expression of `D₂₂₀₋₁` and `D₄₄₁₀`                                                                                                                                                   |
+| `g211`                            | `G₂₁₁`   | partial expression of `D₂₂₁₁`                                                                                                                                                                |
+| `g310`                            | `G₃₁₀`   | partial expression of `D₃₂₁₀`                                                                                                                                                                |
+| `g322`                            | `G₃₂₂`   | partial expression of `D₃₂₂₂`                                                                                                                                                                |
+| `g410`                            | `G₄₁₀`   | partial expession of `D₄₄₁₀`                                                                                                                                                                 |
+| `g422`                            | `G₄₂₂`   | partial expession of `D₄₄₂₂`                                                                                                                                                                 |
+| `g520`                            | `G₅₂₀`   | partial expression of `D₅₂₂₀`                                                                                                                                                                |
+| `g532`                            | `G₅₃₂`   | partial expression of `D₅₂₃₂`                                                                                                                                                                |
+| `g521`                            | `G₅₂₁`   | partial expression of `D₅₄₂₁`                                                                                                                                                                |
+| `g533`                            | `G₅₃₃`   | partial expression of `D₅₄₃₃`                                                                                                                                                                |
+| `d220₋1`                          | `D₂₂₀₋₁` | gravity resonance coefficient for Molniya orbits (the `Dₗₘₚₖ` expression in [[2]](#2) is missing a factor `l - 2p + k` from the original equation in [[4]](#4) with `k = -1` instead of `1`) |
+| `d2211`                           | `D₂₂₁₁`  | gravity resonance coefficient for Molniya orbits (the `Dₗₘₚₖ` expression in [[2]](#2) is missing a factor `l - 2p + k` from the original equation in [[4]](#4))                              |
+| `d3210`                           | `D₃₂₁₀`  | see `D₂₂₁₁`                                                                                                                                                                                  |
+| `d3222`                           | `D₃₂₂₂`  | see `D₂₂₁₁`                                                                                                                                                                                  |
+| `d4410`                           | `D₄₄₁₀`  | see `D₂₂₁₁`                                                                                                                                                                                  |
+| `d4422`                           | `D₄₄₂₂`  | see `D₂₂₁₁`                                                                                                                                                                                  |
+| `d5220`                           | `D₅₂₂₀`  | see `D₂₂₁₁`                                                                                                                                                                                  |
+| `d5232`                           | `D₅₂₃₂`  | see `D₂₂₁₁`                                                                                                                                                                                  |
+| `d5421`                           | `D₅₄₂₁`  | see `D₂₂₁₁`                                                                                                                                                                                  |
+| `d5433`                           | `D₅₄₃₃`  | see `D₂₂₁₁`                                                                                                                                                                                  |
 
 #### Propagation variables
 
 The following expressions depend on the propagation time `t`.
 
-| variable                                | symbol         | description |
-|:----------------------------------------|:---------------|:------------|
-| `t`                                     | `t`            | minutes elapsed since epoch (can be negative) |
-| `p22`                                   | `p₂₂`          | right ascension of the ascending node with neither Earth gravity resonance nor Sun and Moon contributions |
-| `p23`                                   | `p₂₃`          | argument of perigee with neither high altitude drag effects, Earth gravity resonance nor Sun and Moon contributions |
-| `orbit.inclination`                     | `I`            | inclination at epoch plus `t` without the short-period effects of Earth gravity |
-| `orbit.right_ascension`                 | `Ω`            | right ascension of the ascending node at epoch plus `t` without the short-period effects of Earth gravity |
-| `orbit.eccentricity`                    | `e`            | eccentricity at epoch plus `t` without the short-period effects of Earth gravity |
-| `orbit.argument_of_perigee`             | `ω`            | argument of perigee at epoch plus `t` without the short-period effects of Earth gravity |
-| `orbit.mean_anomaly`                    | `M`            | mean anomaly at epoch plus `t` without the short-period effects of Earth gravity |
-| `orbit.mean_motion`                     | `n`            | mean motion at epoch plus `t` without the short-period effects of Earth gravity |
-| `a`                                     | `a`            | semi-major axis |
-| `p32`                                   | `p₃₂`          | partial expression of `aᵧₙ` |
-| `p33`                                   | `p₃₃`          | partial expression of `rₖ`, `ṙₖ` and `rḟₖ` |
-| `p34`                                   | `p₃₄`          | partial expression of `uₖ` |
-| `p35`                                   | `p₃₅`          | partial expression of the initial Kepler variable `p₃₈` |
-| `p36`                                   | `p₃₆`          | partial expression of `rₖ` and `rḟₖ` |
-| `p37`                                   | `p₃₇`          | partial expression of `aᵧₙ` and the initial Kepler variable `p₃₈` |
-| `axn`                                   | `aₓₙ`          | normalized linear eccentricity projected on the line of nodes |
-| `ayn`                                   | `aᵧₙ`          | normalized linear eccentricity projected on the normal to the line of nodes |
-| `p38`                                   | `p₃₈`          | initial Kepler variable (`U` in [[2]](#2), renamed to avoid confusion with the true anomaly plus argument of perigee `u`) |
-| `ew`                                    | `(E + ω)ᵢ`     | Kepler variable used in an iterative process to estimate the eccentric anomaly `E` |
-| `delta `                                | `Δ(E + ω)ᵢ`    | correction to the Kepler variable at iteration `i` |
-| `p39`                                   | `p₃₉`          | eccentricity at epoch plus `t` |
-| `pl`                                    | `pₗ`            | semi-latus rectum |
-| `p40`                                   | `p₄₀`          | normalized linear eccentricity projected on the semi-minor axis |
-| `r`                                     | `r`            | radius (distance to the focus) without the short-period effects of Earth gravity |
-| `r_dot`                                 | `ṙ`            | radius time derivative without the short-period effects of Earth gravity |
-| `b`                                     | `β`            | semi-minor axis over semi-major axis |
-| `p41`                                   | `p₄₁`          | partial expression of `p₄₂` and `p₄₃` |
-| `p42`                                   | `p₄₂`          | sine of `u` |
-| `p43`                                   | `p₄₃`          | cosine of `u` |
-| `u`                                     | `u`            | true anomaly plus argument of perigee without the short-period effects of Earth gravity |
-| `p44`                                   | `p₄₄`          | `sin(2 u)`, partial expression of `uₖ`, `Ωₖ` and `ṙₖ` |
-| `p45`                                   | `p₄₅`          | `cos(2 u)`, partial expression of `rₖ`, `Iₖ` and `rḟₖ` |
-| `p46`                                   | `p₄₆`          | partial expression of `rₖ`, `uₖ`, `Iₖ` and `Ωₖ` |
-| `rk`                                    | `rₖ`           | radius (distance to the focus) |
-| `uk`                                    | `uₖ`           | true anomaly plus argument of perigee |
-| `inclination_k`                         | `Iₖ`           | inclination at epoch plus `t`
-| `right_ascension_k`                     | `Ωₖ`           | right ascension at epoch plus `t`
-| `rk_dot`                                | `ṙₖ`           | radius time derivative (@DEV orthogonal speed) |
-| `rfk_dot`                               | `rḟₖ`          | radius times the true anomaly derivative (@DEV non-orthogonal speed) |
-| `u0`                                    | `u₀`           | x component of the position unit vector |
-| `u1`                                    | `u₁`           | y component of the position unit vector |
-| `u2`                                    | `u₂`           | z component of the position unit vector |
-| `prediction.position[0]`                | `r₀`           | x component of the position vector in km (True Equator, Mean Equinox (TEME) of epoch reference frame) |
-| `prediction.position[1]`                | `r₁`           | y component of the position vector in km (True Equator, Mean Equinox (TEME) of epoch reference frame) |
-| `prediction.position[2]`                | `r₂`           | z component of the position vector in km (True Equator, Mean Equinox (TEME) of epoch reference frame) |
-| `prediction.velocity[0]`                | `ṙ₀`           | x component of the velocity vector in km.s⁻¹ (True Equator, Mean Equinox (TEME) of epoch reference frame) |
-| `prediction.velocity[1]`                | `ṙ₁`           | y component of the velocity vector in km.s⁻¹ (True Equator, Mean Equinox (TEME) of epoch reference frame) |
-| `prediction.velocity[2]`                | `ṙ₂`           | z component of the velocity vector in km.s⁻¹ (True Equator, Mean Equinox (TEME) of epoch reference frame) |
-| `p24`                                   | `p₂₄`          | mean anomaly without drag contributions in near earth propagation |
-| `p25`                                   | `p₂₅`          | partial expression of `ω` and `M` in near earth propagation |
-| `p26`                                   | `p₂₆`          | mean anomaly with elliptic correction and without drag contributions in near earth propagation |
-| `p27`                                   | `p₂₇`          | non-clamped eccentricity in near earth propagation |
-| `p28`                                   | `p₂₈`          | semi-major axis with resonance correction in deep space propagation |
-| `p29`                                   | `p₂₉`          | mean anomaly with resonance correction in deep space propagation |
-| `p31`                                   | `p₃₁`          | non-clamped eccentricity in deep space propagation |
-| `sidereal_time`                         | `θ`            | sidereal time at epoch plus `t` |
-| `delta_t`                               | `Δt`           | time step used in the integration of resonance effects of Earth gravity in min (either `720` or `-720`) |
-| `lambda_dot`                            | `λ̇ᵢ`           | resonance effects of Earth gravity variable's time derivative at epoch plus `i Δt` |
-| `ni_dot`                                | `ṅᵢ`           | mean motion time derivative at epoch plus `i Δt` |
-| `ni_ddot`                               | `n̈ᵢ`           | mean motion second time derivative at epoch plus `i Δt` |
-| `ResonanceState::t`                     | `tᵢ`           | resonance effects of Earth gravity integrator time (`i Δt`) |
-| `ResonanceState::mean_motion`           | `nᵢ`           | mean motion time derivative at epoch plus `Δt i` |
-| `ResonanceState::lambda`                | `λᵢ`           | resonance effects of Earth gravity variable at epoch plus `i Δt` |
-| `p30`                                   | `p₃₀`          | non-normalised `Ω` in Lyddane deep space propagation |
+| variable                      | symbol      | description                                                                                                               |
+| :---------------------------- | :---------- | :------------------------------------------------------------------------------------------------------------------------ |
+| `t`                           | `t`         | minutes elapsed since epoch (can be negative)                                                                             |
+| `p22`                         | `p₂₂`       | right ascension of the ascending node with neither Earth gravity resonance nor Sun and Moon contributions                 |
+| `p23`                         | `p₂₃`       | argument of perigee with neither high altitude drag effects, Earth gravity resonance nor Sun and Moon contributions       |
+| `orbit.inclination`           | `I`         | inclination at epoch plus `t` without the short-period effects of Earth gravity                                           |
+| `orbit.right_ascension`       | `Ω`         | right ascension of the ascending node at epoch plus `t` without the short-period effects of Earth gravity                 |
+| `orbit.eccentricity`          | `e`         | eccentricity at epoch plus `t` without the short-period effects of Earth gravity                                          |
+| `orbit.argument_of_perigee`   | `ω`         | argument of perigee at epoch plus `t` without the short-period effects of Earth gravity                                   |
+| `orbit.mean_anomaly`          | `M`         | mean anomaly at epoch plus `t` without the short-period effects of Earth gravity                                          |
+| `orbit.mean_motion`           | `n`         | mean motion at epoch plus `t` without the short-period effects of Earth gravity                                           |
+| `a`                           | `a`         | semi-major axis                                                                                                           |
+| `p32`                         | `p₃₂`       | partial expression of `aᵧₙ`                                                                                               |
+| `p33`                         | `p₃₃`       | partial expression of `rₖ`, `ṙₖ` and `rḟₖ`                                                                                |
+| `p34`                         | `p₃₄`       | partial expression of `uₖ`                                                                                                |
+| `p35`                         | `p₃₅`       | partial expression of the initial Kepler variable `p₃₈`                                                                   |
+| `p36`                         | `p₃₆`       | partial expression of `rₖ` and `rḟₖ`                                                                                      |
+| `p37`                         | `p₃₇`       | partial expression of `aᵧₙ` and the initial Kepler variable `p₃₈`                                                         |
+| `axn`                         | `aₓₙ`       | normalized linear eccentricity projected on the line of nodes                                                             |
+| `ayn`                         | `aᵧₙ`       | normalized linear eccentricity projected on the normal to the line of nodes                                               |
+| `p38`                         | `p₃₈`       | initial Kepler variable (`U` in [[2]](#2), renamed to avoid confusion with the true anomaly plus argument of perigee `u`) |
+| `ew`                          | `(E + ω)ᵢ`  | Kepler variable used in an iterative process to estimate the eccentric anomaly `E`                                        |
+| `delta `                      | `Δ(E + ω)ᵢ` | correction to the Kepler variable at iteration `i`                                                                        |
+| `p39`                         | `p₃₉`       | eccentricity at epoch plus `t`                                                                                            |
+| `pl`                          | `pₗ`        | semi-latus rectum                                                                                                         |
+| `p40`                         | `p₄₀`       | normalized linear eccentricity projected on the semi-minor axis                                                           |
+| `r`                           | `r`         | radius (distance to the focus) without the short-period effects of Earth gravity                                          |
+| `r_dot`                       | `ṙ`         | radius time derivative without the short-period effects of Earth gravity                                                  |
+| `b`                           | `β`         | semi-minor axis over semi-major axis                                                                                      |
+| `p41`                         | `p₄₁`       | partial expression of `p₄₂` and `p₄₃`                                                                                     |
+| `p42`                         | `p₄₂`       | sine of `u`                                                                                                               |
+| `p43`                         | `p₄₃`       | cosine of `u`                                                                                                             |
+| `u`                           | `u`         | true anomaly plus argument of perigee without the short-period effects of Earth gravity                                   |
+| `p44`                         | `p₄₄`       | `sin(2 u)`, partial expression of `uₖ`, `Ωₖ` and `ṙₖ`                                                                     |
+| `p45`                         | `p₄₅`       | `cos(2 u)`, partial expression of `rₖ`, `Iₖ` and `rḟₖ`                                                                    |
+| `p46`                         | `p₄₆`       | partial expression of `rₖ`, `uₖ`, `Iₖ` and `Ωₖ`                                                                           |
+| `rk`                          | `rₖ`        | radius (distance to the focus)                                                                                            |
+| `uk`                          | `uₖ`        | true anomaly plus argument of perigee                                                                                     |
+| `inclination_k`               | `Iₖ`        | inclination at epoch plus `t`                                                                                             |
+| `right_ascension_k`           | `Ωₖ`        | right ascension at epoch plus `t`                                                                                         |
+| `rk_dot`                      | `ṙₖ`        | radius time derivative (@DEV orthogonal speed)                                                                            |
+| `rfk_dot`                     | `rḟₖ`       | radius times the true anomaly derivative (@DEV non-orthogonal speed)                                                      |
+| `u0`                          | `u₀`        | x component of the position unit vector                                                                                   |
+| `u1`                          | `u₁`        | y component of the position unit vector                                                                                   |
+| `u2`                          | `u₂`        | z component of the position unit vector                                                                                   |
+| `prediction.position[0]`      | `r₀`        | x component of the position vector in km (True Equator, Mean Equinox (TEME) of epoch reference frame)                     |
+| `prediction.position[1]`      | `r₁`        | y component of the position vector in km (True Equator, Mean Equinox (TEME) of epoch reference frame)                     |
+| `prediction.position[2]`      | `r₂`        | z component of the position vector in km (True Equator, Mean Equinox (TEME) of epoch reference frame)                     |
+| `prediction.velocity[0]`      | `ṙ₀`        | x component of the velocity vector in km.s⁻¹ (True Equator, Mean Equinox (TEME) of epoch reference frame)                 |
+| `prediction.velocity[1]`      | `ṙ₁`        | y component of the velocity vector in km.s⁻¹ (True Equator, Mean Equinox (TEME) of epoch reference frame)                 |
+| `prediction.velocity[2]`      | `ṙ₂`        | z component of the velocity vector in km.s⁻¹ (True Equator, Mean Equinox (TEME) of epoch reference frame)                 |
+| `p24`                         | `p₂₄`       | mean anomaly without drag contributions in near earth propagation                                                         |
+| `p25`                         | `p₂₅`       | partial expression of `ω` and `M` in near earth propagation                                                               |
+| `p26`                         | `p₂₆`       | mean anomaly with elliptic correction and without drag contributions in near earth propagation                            |
+| `p27`                         | `p₂₇`       | non-clamped eccentricity in near earth propagation                                                                        |
+| `p28`                         | `p₂₈`       | semi-major axis with resonance correction in deep space propagation                                                       |
+| `p29`                         | `p₂₉`       | mean anomaly with resonance correction in deep space propagation                                                          |
+| `p31`                         | `p₃₁`       | non-clamped eccentricity in deep space propagation                                                                        |
+| `sidereal_time`               | `θ`         | sidereal time at epoch plus `t`                                                                                           |
+| `delta_t`                     | `Δt`        | time step used in the integration of resonance effects of Earth gravity in min (either `720` or `-720`)                   |
+| `lambda_dot`                  | `λ̇ᵢ`        | resonance effects of Earth gravity variable's time derivative at epoch plus `i Δt`                                        |
+| `ni_dot`                      | `ṅᵢ`        | mean motion time derivative at epoch plus `i Δt`                                                                          |
+| `ni_ddot`                     | `n̈ᵢ`        | mean motion second time derivative at epoch plus `i Δt`                                                                   |
+| `ResonanceState::t`           | `tᵢ`        | resonance effects of Earth gravity integrator time (`i Δt`)                                                               |
+| `ResonanceState::mean_motion` | `nᵢ`        | mean motion time derivative at epoch plus `Δt i`                                                                          |
+| `ResonanceState::lambda`      | `λᵢ`        | resonance effects of Earth gravity variable at epoch plus `i Δt`                                                          |
+| `p30`                         | `p₃₀`       | non-normalised `Ω` in Lyddane deep space propagation                                                                      |
 
 #### Third-body initialization variables
 
-The contribution of the Sun and the Moon to the orbital elements are calculated with a unique set of expressions. *src/third_body.rs* provides a generic implementation of these expressions. Variables specific to the third body (either the Sun or the Moon) are annotated with `x`. In every other file, these variables are annotated with `s` if they correspond to solar perturbations, and `l` if they correspond to lunar perturbations.
+The contribution of the Sun and the Moon to the orbital elements are calculated with a unique set of expressions. _src/third_body.rs_ provides a generic implementation of these expressions. Variables specific to the third body (either the Sun or the Moon) are annotated with `x`. In every other file, these variables are annotated with `s` if they correspond to solar perturbations, and `l` if they correspond to lunar perturbations.
 
 The `aₓₙ`, `Xₓₙ`, `Zₓₙ` (`n ∈ ℕ`), `Fₓ₂` and `Fₓ₃` variables correspond to the `aₙ`, `Xₙ`, `Zₙ`, `F₂` and `F₃` variables in [[2]](#2). The added `x` highlights the dependence on the perturbing third body.
 
 The following variables depend solely on epoch elements.
 
-| variable                                | symbol         | description |
-|:----------------------------------------|:---------------|:------------|
-| `third_body_inclination_sine`           | `sin Iₓ`       | sine of the inclination of the Sun (`sin Iₛ`) or the Moon (`sin Iₗ`) |
-| `third_body_inclination_cosine`         | `cos Iₓ`       | cosine of the inclination of the Sun (`cos Iₛ`) or the Moon (`cos Iₗ`) |
-| `delta_right_ascension_sine`            | `sin(Ω₀ - Ωₓ)` | sine of the difference between the right ascension of the ascending node of the satellite at epoch and the Sun's (`sin(Ω₀ - Ωₛ)`) or the Moon's (`sin(Ω₀ - Ωₗ)`) |
+| variable                                | symbol         | description                                                                                                                                                        |
+| :-------------------------------------- | :------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `third_body_inclination_sine`           | `sin Iₓ`       | sine of the inclination of the Sun (`sin Iₛ`) or the Moon (`sin Iₗ`)                                                                                               |
+| `third_body_inclination_cosine`         | `cos Iₓ`       | cosine of the inclination of the Sun (`cos Iₛ`) or the Moon (`cos Iₗ`)                                                                                             |
+| `delta_right_ascension_sine`            | `sin(Ω₀ - Ωₓ)` | sine of the difference between the right ascension of the ascending node of the satellite at epoch and the Sun's (`sin(Ω₀ - Ωₛ)`) or the Moon's (`sin(Ω₀ - Ωₗ)`)   |
 | `delta_right_ascension_cosine`          | `cos(Ω₀ - Ωₓ)` | cosine of the difference between the right ascension of the ascending node of the satellite at epoch and the Sun's (`cos(Ω₀ - Ωₛ)`) or the Moon's (`cos(Ω₀ - Ωₗ)`) |
-| `third_body_argument_of_perigee_sine`   | `sin ωₓ`       | sine of the argument of perigee of the Sun (`sin ωₛ`) or the Moon (`sin ωₗ`) |
-| `third_body_argument_of_perigee_cosine` | `cos ωₓ`       | cosine of the argument of perigee of the Sun (`sin ωₛ`) or the Moon (`cos ωₗ`) |
-| `third_body_mean_anomaly_0`             | `Mₓ₀`          | mean anomaly at epoch of the Sun (`Mₛ₀`) or the Moon (`Mₗ₀`) |
-| `ax1`                                   | `aₓ₁`          | partial expression of multiple `Xₓₙ` and `Zₓₙ` expressions |
-| `ax3`                                   | `aₓ₃`          | partial expression of multiple `Xₓₙ` and `Zₓₙ` expressions |
-| `ax7`                                   | `aₓ₇`          | partial expression of multiple `aₓ₂` and `aₓ₅` |
-| `ax8`                                   | `aₓ₈`          | partial expression of multiple `aₓ₂` and `aₓ₅` |
-| `ax9`                                   | `aₓ₉`          | partial expression of multiple `aₓ₄` and `aₓ₆` |
-| `ax10`                                  | `aₓ₁₀`         | partial expression of multiple `aₓ₄` and `aₓ₆` |
-| `ax2`                                   | `aₓ₂`          | partial expression of multiple `Xₓₙ` and `Zₓₙ` expressions |
-| `ax4`                                   | `aₓ₄`          | partial expression of multiple `Xₓₙ` and `Zₓₙ` expressions |
-| `ax5`                                   | `aₓ₅`          | partial expression of multiple `Xₓₙ` and `Zₓₙ` expressions |
-| `ax6`                                   | `aₓ₆`          | partial expression of multiple `Xₓₙ` and `Zₓₙ` expressions |
-| `xx1`                                   | `Xₓ₁`          | partial expression of multiple `Zₓₙ` expressions, `kₓ₀`, `kₓ₁` and `ėₓ` |
-| `xx2`                                   | `Xₓ₂`          | partial expression of multiple `Zₓₙ` expressions, `kₓ₀`, `kₓ₁` and `ėₓ` |
-| `xx3`                                   | `Xₓ₃`          | partial expression of multiple `Zₓₙ` expressions, `kₓ₀`, `kₓ₁` and `ėₓ` |
-| `xx4`                                   | `Xₓ₄`          | partial expression of multiple `Zₓₙ` expressions, `kₓ₀`, `kₓ₁` and `ėₓ` |
-| `xx5`                                   | `Xₓ₅`          | partial expression of multiple `Zₓₙ` expressions |
-| `xx6`                                   | `Xₓ₆`          | partial expression of multiple `Zₓₙ` expressions |
-| `xx7`                                   | `Xₓ₇`          | partial expression of multiple `Zₓₙ` expressions |
-| `xx8`                                   | `Xₓ₈`          | partial expression of multiple `Zₓₙ` expressions |
-| `zx31`                                  | `Zₓ₃₁`         | partial expression of `Zₓ₃`, `kₓ₈` and `ω̇ₓ` |
-| `zx32`                                  | `Zₓ₃₂`         | partial expression of `Zₓ₂`, `kₓ₇` and `ω̇ₓ` |
-| `zx33`                                  | `Zₓ₃₃`         | partial expression of `Zₓ₃`, `kₓ₈` and `ω̇ₓ` |
-| `zx11`                                  | `Zₓ₁₁`         | partial expression of `kₓ₃` and `İₓ` |
-| `zx13`                                  | `Zₓ₁₃`         | partial expression of `kₓ₃` and `İₓ` |
-| `zx21`                                  | `Zₓ₂₁`         | partial expression of `kₓ₁₁` and `Ω̇ₓ` |
-| `zx23`                                  | `Zₓ₂₃`         | partial expression of `kₓ₁₁` and `Ω̇ₓ` |
-| `zx1`                                   | `Zₓ₁`          | partial expression of `kₓ₅` and `Ṁₓ` |
-| `zx3`                                   | `Zₓ₃`          | partial expression of `kₓ₅` and `Ṁₓ` |
-| `px0`                                   | `pₓ₀`          | partial expression of multiple `kₓₙ` expressions and `Ṁₓ` |
-| `px1`                                   | `pₓ₁`          | partial expression of multiple `kₓₙ` expressions and `İₓ` |
-| `px2`                                   | `pₓ₂`          | partial expression of multiple `kₓₙ` expressions and `ω̇ₓ` |
-| `px3`                                   | `pₓ₃`          | partial expression of multiple `kₓₙ` expressions and `ėₓ` |
-| `kx0`                                   | `kₓ₀`          | `Fₓ₂` coefficient of `δeₓ` |
-| `kx1`                                   | `kₓ₁`          | `Fₓ₃` coefficient of `δeₓ` |
-| `kx2`                                   | `kₓ₂`          | `Fₓ₂` coefficient of `δIₓ` |
-| `kx3`                                   | `kₓ₃`          | `Fₓ₃` coefficient of `δIₓ` |
-| `kx4`                                   | `kₓ₄`          | `Fₓ₂` coefficient of `δMₓ` |
-| `kx5`                                   | `kₓ₅`          | `Fₓ₃` coefficient of `δMₓ` |
-| `kx6`                                   | `kₓ₆`          | `sin fₓ` coefficient of `δMₓ` |
-| `kx7`                                   | `kₓ₇`          | `Fₓ₂` coefficient of `pₓ₄` |
-| `kx8`                                   | `kₓ₈`          | `Fₓ₃` coefficient of `pₓ₄` |
-| `kx9`                                   | `kₓ₉`          | `sin fₓ` coefficient of `pₓ₄` |
-| `kx10`                                  | `kₓ₁₀`         | `Fₓ₂` coefficient of `pₓ₅` |
-| `kx11`                                  | `kₓ₁₁`         | `Fₓ₃` coefficient of `pₓ₅` |
-| `third_body_dots.inclination`           | `İₓ`           | secular contribution of the Sun (`İₛ`) or the Moon (`İₗ`) to the inclination |
-| `third_body_right_ascension_dot`        | `Ω̇ₓ`           | secular contribution of the Sun (`Ω̇ₛ`) or the Moon (`Ω̇ₗ`) to the right ascension of the ascending node |
-| `third_body_dots.eccentricity`          | `ėₓ`           | secular contribution of the Sun (`ėₛ`) or the Moon (`ėₗ`) to the eccentricity |
-| `third_body_dots.agument_of_perigee`    | `ω̇ₓ`           | secular contribution of the Sun (`ω̇ₛ`) or the Moon (`ω̇ₗ`) to the argument of perigee |
-| `third_body_dots.mean_anomaly`          | `Ṁₓ`           | secular contribution of the Sun (`Ṁₛ`) or the Moon (`Ṁₗ`) to the mean anomaly |
+| `third_body_argument_of_perigee_sine`   | `sin ωₓ`       | sine of the argument of perigee of the Sun (`sin ωₛ`) or the Moon (`sin ωₗ`)                                                                                       |
+| `third_body_argument_of_perigee_cosine` | `cos ωₓ`       | cosine of the argument of perigee of the Sun (`sin ωₛ`) or the Moon (`cos ωₗ`)                                                                                     |
+| `third_body_mean_anomaly_0`             | `Mₓ₀`          | mean anomaly at epoch of the Sun (`Mₛ₀`) or the Moon (`Mₗ₀`)                                                                                                       |
+| `ax1`                                   | `aₓ₁`          | partial expression of multiple `Xₓₙ` and `Zₓₙ` expressions                                                                                                         |
+| `ax3`                                   | `aₓ₃`          | partial expression of multiple `Xₓₙ` and `Zₓₙ` expressions                                                                                                         |
+| `ax7`                                   | `aₓ₇`          | partial expression of multiple `aₓ₂` and `aₓ₅`                                                                                                                     |
+| `ax8`                                   | `aₓ₈`          | partial expression of multiple `aₓ₂` and `aₓ₅`                                                                                                                     |
+| `ax9`                                   | `aₓ₉`          | partial expression of multiple `aₓ₄` and `aₓ₆`                                                                                                                     |
+| `ax10`                                  | `aₓ₁₀`         | partial expression of multiple `aₓ₄` and `aₓ₆`                                                                                                                     |
+| `ax2`                                   | `aₓ₂`          | partial expression of multiple `Xₓₙ` and `Zₓₙ` expressions                                                                                                         |
+| `ax4`                                   | `aₓ₄`          | partial expression of multiple `Xₓₙ` and `Zₓₙ` expressions                                                                                                         |
+| `ax5`                                   | `aₓ₅`          | partial expression of multiple `Xₓₙ` and `Zₓₙ` expressions                                                                                                         |
+| `ax6`                                   | `aₓ₆`          | partial expression of multiple `Xₓₙ` and `Zₓₙ` expressions                                                                                                         |
+| `xx1`                                   | `Xₓ₁`          | partial expression of multiple `Zₓₙ` expressions, `kₓ₀`, `kₓ₁` and `ėₓ`                                                                                            |
+| `xx2`                                   | `Xₓ₂`          | partial expression of multiple `Zₓₙ` expressions, `kₓ₀`, `kₓ₁` and `ėₓ`                                                                                            |
+| `xx3`                                   | `Xₓ₃`          | partial expression of multiple `Zₓₙ` expressions, `kₓ₀`, `kₓ₁` and `ėₓ`                                                                                            |
+| `xx4`                                   | `Xₓ₄`          | partial expression of multiple `Zₓₙ` expressions, `kₓ₀`, `kₓ₁` and `ėₓ`                                                                                            |
+| `xx5`                                   | `Xₓ₅`          | partial expression of multiple `Zₓₙ` expressions                                                                                                                   |
+| `xx6`                                   | `Xₓ₆`          | partial expression of multiple `Zₓₙ` expressions                                                                                                                   |
+| `xx7`                                   | `Xₓ₇`          | partial expression of multiple `Zₓₙ` expressions                                                                                                                   |
+| `xx8`                                   | `Xₓ₈`          | partial expression of multiple `Zₓₙ` expressions                                                                                                                   |
+| `zx31`                                  | `Zₓ₃₁`         | partial expression of `Zₓ₃`, `kₓ₈` and `ω̇ₓ`                                                                                                                        |
+| `zx32`                                  | `Zₓ₃₂`         | partial expression of `Zₓ₂`, `kₓ₇` and `ω̇ₓ`                                                                                                                        |
+| `zx33`                                  | `Zₓ₃₃`         | partial expression of `Zₓ₃`, `kₓ₈` and `ω̇ₓ`                                                                                                                        |
+| `zx11`                                  | `Zₓ₁₁`         | partial expression of `kₓ₃` and `İₓ`                                                                                                                               |
+| `zx13`                                  | `Zₓ₁₃`         | partial expression of `kₓ₃` and `İₓ`                                                                                                                               |
+| `zx21`                                  | `Zₓ₂₁`         | partial expression of `kₓ₁₁` and `Ω̇ₓ`                                                                                                                              |
+| `zx23`                                  | `Zₓ₂₃`         | partial expression of `kₓ₁₁` and `Ω̇ₓ`                                                                                                                              |
+| `zx1`                                   | `Zₓ₁`          | partial expression of `kₓ₅` and `Ṁₓ`                                                                                                                               |
+| `zx3`                                   | `Zₓ₃`          | partial expression of `kₓ₅` and `Ṁₓ`                                                                                                                               |
+| `px0`                                   | `pₓ₀`          | partial expression of multiple `kₓₙ` expressions and `Ṁₓ`                                                                                                          |
+| `px1`                                   | `pₓ₁`          | partial expression of multiple `kₓₙ` expressions and `İₓ`                                                                                                          |
+| `px2`                                   | `pₓ₂`          | partial expression of multiple `kₓₙ` expressions and `ω̇ₓ`                                                                                                          |
+| `px3`                                   | `pₓ₃`          | partial expression of multiple `kₓₙ` expressions and `ėₓ`                                                                                                          |
+| `kx0`                                   | `kₓ₀`          | `Fₓ₂` coefficient of `δeₓ`                                                                                                                                         |
+| `kx1`                                   | `kₓ₁`          | `Fₓ₃` coefficient of `δeₓ`                                                                                                                                         |
+| `kx2`                                   | `kₓ₂`          | `Fₓ₂` coefficient of `δIₓ`                                                                                                                                         |
+| `kx3`                                   | `kₓ₃`          | `Fₓ₃` coefficient of `δIₓ`                                                                                                                                         |
+| `kx4`                                   | `kₓ₄`          | `Fₓ₂` coefficient of `δMₓ`                                                                                                                                         |
+| `kx5`                                   | `kₓ₅`          | `Fₓ₃` coefficient of `δMₓ`                                                                                                                                         |
+| `kx6`                                   | `kₓ₆`          | `sin fₓ` coefficient of `δMₓ`                                                                                                                                      |
+| `kx7`                                   | `kₓ₇`          | `Fₓ₂` coefficient of `pₓ₄`                                                                                                                                         |
+| `kx8`                                   | `kₓ₈`          | `Fₓ₃` coefficient of `pₓ₄`                                                                                                                                         |
+| `kx9`                                   | `kₓ₉`          | `sin fₓ` coefficient of `pₓ₄`                                                                                                                                      |
+| `kx10`                                  | `kₓ₁₀`         | `Fₓ₂` coefficient of `pₓ₅`                                                                                                                                         |
+| `kx11`                                  | `kₓ₁₁`         | `Fₓ₃` coefficient of `pₓ₅`                                                                                                                                         |
+| `third_body_dots.inclination`           | `İₓ`           | secular contribution of the Sun (`İₛ`) or the Moon (`İₗ`) to the inclination                                                                                       |
+| `third_body_right_ascension_dot`        | `Ω̇ₓ`           | secular contribution of the Sun (`Ω̇ₛ`) or the Moon (`Ω̇ₗ`) to the right ascension of the ascending node                                                             |
+| `third_body_dots.eccentricity`          | `ėₓ`           | secular contribution of the Sun (`ėₛ`) or the Moon (`ėₗ`) to the eccentricity                                                                                      |
+| `third_body_dots.agument_of_perigee`    | `ω̇ₓ`           | secular contribution of the Sun (`ω̇ₛ`) or the Moon (`ω̇ₗ`) to the argument of perigee                                                                               |
+| `third_body_dots.mean_anomaly`          | `Ṁₓ`           | secular contribution of the Sun (`Ṁₛ`) or the Moon (`Ṁₗ`) to the mean anomaly                                                                                      |
 
 #### Third-body propagation variables
 
 The following variables depend on the propagation time `t`.
 
-| variable                                | symbol         | description |
-|:----------------------------------------|:---------------|:------------|
-| `third_body_mean_anomaly`               | `Mₓ`           | mean anomaly of the Sun (`Mₛ`) or the Moon (`Mₗ`) |
-| `fx`                                    | `fₓ`           | third body true anomaly |
-| `fx2`                                   | `Fₓ₂`          | partial expression of the third body long-period periodic contribution |
-| `fx3`                                   | `Fₓ₃`          | partial expression of the third body long-period periodic contribution |
-| `third_body_delta_eccentricity`         | `δeₓ`          | long-period periodic contribution of the Sun (`δeₛ`) or the Moon (`δeₗ`) to the eccentricity |
-| `third_body_delta_inclination`          | `δIₓ`          | long-period periodic contribution of the Sun (`δIₛ`) or the Moon (`δIₗ`) to the inclination |
-| `third_body_delta_mean_mootion`         | `δMₓ`          | long-period periodic contribution of the Sun (`δMₛ`) or the Moon (`δMₗ`) to the mean motion |
-| `px4`                                   | `pₓ₄`          | partial expression of the long-period periodic contribution of the Sun (`pₛ₄`) or the Moon (`pₗ₄`) to the right ascension of the ascending node and the argument of perigee |
-| `px5`                                   | `pₓ₅`          | partial expression of the long-period periodic contribution of the Sun (`pₛ₅`) or the Moon (`pₗ₅`) to the right ascension of the ascending node |
+| variable                        | symbol | description                                                                                                                                                                 |
+| :------------------------------ | :----- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `third_body_mean_anomaly`       | `Mₓ`   | mean anomaly of the Sun (`Mₛ`) or the Moon (`Mₗ`)                                                                                                                           |
+| `fx`                            | `fₓ`   | third body true anomaly                                                                                                                                                     |
+| `fx2`                           | `Fₓ₂`  | partial expression of the third body long-period periodic contribution                                                                                                      |
+| `fx3`                           | `Fₓ₃`  | partial expression of the third body long-period periodic contribution                                                                                                      |
+| `third_body_delta_eccentricity` | `δeₓ`  | long-period periodic contribution of the Sun (`δeₛ`) or the Moon (`δeₗ`) to the eccentricity                                                                                |
+| `third_body_delta_inclination`  | `δIₓ`  | long-period periodic contribution of the Sun (`δIₛ`) or the Moon (`δIₗ`) to the inclination                                                                                 |
+| `third_body_delta_mean_mootion` | `δMₓ`  | long-period periodic contribution of the Sun (`δMₛ`) or the Moon (`δMₗ`) to the mean motion                                                                                 |
+| `px4`                           | `pₓ₄`  | partial expression of the long-period periodic contribution of the Sun (`pₛ₄`) or the Moon (`pₗ₄`) to the right ascension of the ascending node and the argument of perigee |
+| `px5`                           | `pₓ₅`  | partial expression of the long-period periodic contribution of the Sun (`pₛ₅`) or the Moon (`pₗ₅`) to the right ascension of the ascending node                             |
 
 ### Mathematical expressions
 
-1. [UT1 to Julian conversion](#ut1-to-julian-conversion)
-2. [Common initialization](#common-initialization)
-3. [Near earth initialization](#near-earth-initialization)
-4. [High altitude near earth initialization](#high-altitude-near-earth-initialization)
-5. [Elliptic high altitude near earth initialization](#elliptic-high-altitude-near-earth-initialization)
-6. [Deep space initialization](#deep-space-initialization)
-7. [Third body perturbations](#third-body-perturbations)
-8. [Resonant deep space initialization](#resonant-deep-space-initialization)
-9. [Geosynchronous deep space initialization](#geosynchronous-deep-space-initialization)
-10. [Molniya deep space initialization](#molniya-deep-space-initialization)
-11. [Common propagation](#common-propagation)
-12. [Near earth propagation](#near-earth-propagation)
-13. [High altitude near earth propagation](#high-altitude-near-earth-propagation)
-14. [Deep space propagation](#deep-space-propagation)
-15. [Third body propagation](#third-body-propagation)
-16. [Resonant deep space propagation](#resonant-deep-space-propagation)
-17. [Lyddane deep space propagation](#lyddane-deep-space-propagation)
-
----
-
 #### UT1 to Julian conversion
+
 The epoch (Julian years since UTC 1 January 2000 12h00) can be calculated with either the AFSPC formula:
+
 ```
 y₂₀₀₀ = (367 yᵤ - ⌊7 (yᵤ + ⌊(mᵤ + 9) / 12⌋) / 4⌋ + 275 ⌊mᵤ / 9⌋ + dᵤ
         + 1721013.5
@@ -393,7 +403,9 @@ y₂₀₀₀ = (367 yᵤ - ⌊7 (yᵤ + ⌊(mᵤ + 9) / 12⌋) / 4⌋ + 275 ⌊
         - 2451545)
         / 365.25
 ```
+
 or the more accurate version of the same formula:
+
 ```
 y₂₀₀₀ = (367 yᵤₜ₁ - ⌊7 (yᵤₜ₁ + ⌊(mᵤₜ₁ + 9) / 12⌋) / 4⌋ + 275 ⌊mᵤₜ₁ / 9⌋ + dᵤₜ₁ - 730531) / 365.25
         + (3600 hᵤₜ₁ + 60 minᵤₜ₁ + sᵤₜ₁ - 43200) / (24 × 60 × 60 × 365.25)
@@ -401,6 +413,7 @@ y₂₀₀₀ = (367 yᵤₜ₁ - ⌊7 (yᵤₜ₁ + ⌊(mᵤₜ₁ + 9) / 12⌋
 ```
 
 #### Common initialization
+
 ```
 a₁ = (kₑ / n₀)²ᐟ³
 
@@ -484,7 +497,9 @@ k₁ = ³/₂ C₁
 ```
 
 #### Near earth initialization
+
 Defined only if `n₀" > 2π / 225` (near earth).
+
 ```
        1 J₃
 k₂ = - - -- sin I₀
@@ -503,7 +518,9 @@ k₅ = │ - - -- sin I₀ --------    if |1 + p₁| > 1.5 × 10⁻¹²
 ```
 
 #### High altitude near earth initialization
+
 Defined only if `n₀" > 2π / 225` (near earth) and `p₃ ≥ 220 / (aₑ + 1)` (high altitude).
+
 ```
 D₂ = 4 a₀" ξ C₁²
 
@@ -527,7 +544,9 @@ k₁₀ = ¹/₅ (3 D₄ + 12 C₁ D₃ + 6 D₂² + 15 C₁² (2 D₂ + C₁²)
 ```
 
 #### Elliptic high altitude near earth initialization
+
 Defined only if `n₀" > 2π / 225` (near earth), `p₃ ≥ 220 / (aₑ + 1)` (high altitude) and `e₀ > 10⁻⁴` (elliptic).
+
 ```
                     J₃ p₇ ξ  n₀" sin I₀
 k₁₂ = - 2 B* cos ω₀ -- ----------------
@@ -539,7 +558,9 @@ k₁₃ = - - -----
 ```
 
 #### Deep space initialization
+
 Defined only if `n₀" ≤ 2π / 225` (deep space).
+
 ```
 e₁₉₀₀ = 365.25 (t₀ + 100)
 
@@ -580,9 +601,11 @@ Mₗ₀ = (-1.1151842 + 0.228027132 e₁₉₀₀) rem 2π
 ```
 
 #### Third body perturbations
+
 Defined only if `n₀" ≤ 2π / 225` (deep space).
 
 The following variables are evaluated for two third bodies, the Sun (solar perturbations `s`) and the Moon (lunar perturbations `l`). Variables specific to the third body are annotated with `x`. In other sections, `x` is either `s` or `l`.
+
 ```
 aₓ₁ = cos ωₓ cos(Ω₀ - Ωₓ) + sin ωₓ cos Iₓ sin(Ω₀ - Ωₓ)
 
@@ -686,18 +709,23 @@ İₓ = pₓ₁ nₓ (Zₓ₁₁ + Zₓ₁₃)
 ```
 
 #### Resonant deep space initialization
+
 Defined only if `n₀" ≤ 2π / 225` (deep space) and either:
-- `0.0034906585 < n₀" < 0.0052359877` (geosynchronous)
-- `8.26 × 10⁻³ ≤ n₀" ≤ 9.24 × 10⁻³` and `e₀ ≥ 0.5` (Molniya)
+
+-   `0.0034906585 < n₀" < 0.0052359877` (geosynchronous)
+-   `8.26 × 10⁻³ ≤ n₀" ≤ 9.24 × 10⁻³` and `e₀ ≥ 0.5` (Molniya)
 
 The sidereal time `θ₀` at epoch can be calculated with either the IAU formula:
+
 ```
 c₂₀₀₀ = y₂₀₀₀ / 100
 
 θ₀ = ¹/₂₄₀ (π / 180) (- 6.2 × 10⁻⁶ c₂₀₀₀³ + 0.093104 c₂₀₀₀²
      + (876600 × 3600 + 8640184.812866) c₂₀₀₀ + 67310.54841) mod 2π
 ```
+
 or the AFSPC formula:
+
 ```
 d₁₉₇₀ = 365.25 (y₂₀₀₀ + 30) + 1
 
@@ -715,7 +743,9 @@ d₁₉₇₀ = 365.25 (y₂₀₀₀ + 30) + 1
 ```
 
 #### Geosynchronous deep space initialization
+
 Defined only if `n₀" ≤ 2π / 225` (deep space) and `0.0034906585 < n₀" < 0.0052359877` (geosynchronous orbit).
+
 ```
 p₁₇ = 3 (n / a₀")²
 
@@ -730,7 +760,9 @@ p₁₇ = 3 (n / a₀")²
 ```
 
 #### Molniya deep space initialization
+
 Defined only if `n₀" ≤ 2π / 225` (deep space) and `8.26 × 10⁻³ ≤ n₀" ≤ 9.24 × 10⁻³` and `e₀ ≥ 0.5` (Molniya).
+
 ```
 p₁₈ = 3 n₀"² / a₀"²
 
@@ -798,18 +830,20 @@ D₅₄₃₃ = 2 p₂₁ 2.1765803 × 10⁻⁹ (⁹⁴⁵/₃₂ sin I₀
 ```
 
 #### Common propagation
+
 The following values depend on the propagation time `t` (minutes since epoch).
 
 Named conditions have the following meaning:
-- `near earth`: `n₀" ≤ 2π / 225`
-- `low altitude near earth`: `near earth` and `p₃ < 220 / (aₑ + 1)`
-- `high altitude near earth`: `near earth` and `p₃ ≥ 220 / (aₑ + 1)`
-- `elliptic high altitude near earth`: `high altitude near earth` and `e₀ > 10⁻⁴`
-- `non-elliptic near earth`: `low altitude near earth` or `high altitude near earth` and `e₀ ≤ 10⁻⁴`
-- `deep space`: `n₀" > 2π / 225`
-- `non-Lyddane deep space`: `deep space` and `I ≥ 0.2`
-- `Lyddane deep space`: `deep space` and `I < 0.2`
-- `AFSPC Lyddane deep space`: `Lyddane deep space` and use the same expression as the original AFSPC implementation, with an `ω` discontinuity at `p₂₂ = 0`
+
+-   `near earth`: `n₀" ≤ 2π / 225`
+-   `low altitude near earth`: `near earth` and `p₃ < 220 / (aₑ + 1)`
+-   `high altitude near earth`: `near earth` and `p₃ ≥ 220 / (aₑ + 1)`
+-   `elliptic high altitude near earth`: `high altitude near earth` and `e₀ > 10⁻⁴`
+-   `non-elliptic near earth`: `low altitude near earth` or `high altitude near earth` and `e₀ ≤ 10⁻⁴`
+-   `deep space`: `n₀" > 2π / 225`
+-   `non-Lyddane deep space`: `deep space` and `I ≥ 0.2`
+-   `Lyddane deep space`: `deep space` and `I < 0.2`
+-   `AFSPC Lyddane deep space`: `Lyddane deep space` and use the same expression as the original AFSPC implementation, with an `ω` discontinuity at `p₂₂ = 0`
 
 ```
 p₂₂ = Ω₀ + Ω̇ t + k₀ t²
@@ -950,7 +984,9 @@ ṙ₂ = (ṙₖ u₂ + rḟₖ (sin Iₖ cos uₖ)) aₑ kₑ / 60
 ```
 
 #### Near earth propagation
+
 Defined only if `n₀" > 2π / 225` (near earth).
+
 ```
 p₂₄ = M₀ + Ṁ t
 
@@ -959,9 +995,11 @@ p₂₇ = | e₀ - (C₄ t + C₅ (sin p₂₆ - k₇)) if high altitude
 ```
 
 #### High altitude near earth propagation
+
 Defined only if `n₀" > 2π / 225` (near earth) and `p₃ ≥ 220 / (aₑ + 1)` (high altitude).
 
 `elliptic` means `e₀ > 10⁻⁴`.
+
 ```
 p₂₅ = k₁₃ ((1 + η cos p₂₄)³ - k₁₁) + k₁₂ t
 
@@ -970,7 +1008,9 @@ p₂₆ = │ p₂₄ + p₂₅ if elliptic
 ```
 
 #### Deep space propagation
+
 Defined only if `n₀" ≤ 2π / 225` (deep space).
+
 ```
 p₂₈ = │ (kₑ / (nⱼ + ṅⱼ (t - tⱼ) + ¹/₂ n̈ⱼ (t - tⱼ)²))²ᐟ³ if geosynchronous or Molniya
       │ a₀"                                            otherwise
@@ -987,9 +1027,11 @@ p₃₁ = e₀ + ė t - C₄ t
 ```
 
 #### Third body propagation
+
 Defined only if `n₀" ≤ 2π / 225` (deep space).
 
 The following variables are evaluated for two third bodies, the Sun (solar perturbations `s`) and the Moon (lunar perturbations `l`). Variables specific to the third body are annotated with `x`. In other sections, `x` is either `s` or `l`.
+
 ```
 Mₓ = Mₓ₀ + nₓ t
 
@@ -1011,9 +1053,12 @@ pₓ₅ = kₓ₁₀ Fₓ₂ + kₓ₁₁ Fₓ₃
 ```
 
 #### Resonant deep space propagation
+
 Defined only if `n₀" ≤ 2π / 225` (deep space) and either:
-- `0.0034906585 < n₀" < 0.0052359877` (geosynchronous)
-- `8.26 × 10⁻³ ≤ n₀" ≤ 9.24 × 10⁻³` and `e₀ ≥ 0.5` (Molniya)
+
+-   `0.0034906585 < n₀" < 0.0052359877` (geosynchronous)
+-   `8.26 × 10⁻³ ≤ n₀" ≤ 9.24 × 10⁻³` and `e₀ ≥ 0.5` (Molniya)
+
 ```
 θ = θ₀ + 4.37526908801129966 × 10⁻³ t rem 2π
 
@@ -1040,9 +1085,10 @@ nᵢ₊₁ = nᵢ + ṅᵢ Δt + n̈ᵢ (Δt² / 2)
 λᵢ₊₁ = λᵢ + λ̇ᵢ Δt + ṅᵢ (Δt² / 2)
 ```
 
-
 #### Lyddane deep space propagation
+
 Defined only if `n₀" ≤ 2π / 225` (deep space) and `I < 0.2` (Lyddane).
+
 ```
             sin I sin p₂₂ + (pₛ₅ + pₗ₅) cos p₂₂ + (δIₛ + δIₗ) cos I sin p₂₂
 p₃₀ = tan⁻¹ -------------------------------------------------------------
