@@ -1,12 +1,12 @@
 [package]
 name = "sgp4"
-version = "0.6.0"
+version = "0.6.1"
 authors = ["International Centre for Neuromorphic Systems", "Alexandre Marcireau"]
 description = "A pure Rust implementation of the SGP4 algorithm for satellite propagation"
 homepage = "https://github.com/neuromorphicsystems/sgp4/"
 repository = "https://github.com/neuromorphicsystems/sgp4/"
 readme = "README.md"
-license-file = "LICENSE"
+license = "MIT"
 keywords = ["SGP4", "SDP4", "TLE", "OMM"]
 categories = ["science"]
 edition = "2018"
