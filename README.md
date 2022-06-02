@@ -280,8 +280,8 @@ The following expressions depend on the propagation time `t`.
 | `uk`                          | `uₖ`        | true anomaly plus argument of perigee                                                                                     |
 | `inclination_k`               | `Iₖ`        | inclination at epoch plus `t`                                                                                             |
 | `right_ascension_k`           | `Ωₖ`        | right ascension at epoch plus `t`                                                                                         |
-| `rk_dot`                      | `ṙₖ`        | radius time derivative (@DEV orthogonal speed)                                                                            |
-| `rfk_dot`                     | `rḟₖ`       | radius times the true anomaly derivative (@DEV non-orthogonal speed)                                                      |
+| `rk_dot`                      | `ṙₖ`        | radius time derivative                                                                                                    |
+| `rfk_dot`                     | `rḟₖ`       | radius times the true anomaly derivative                                                                                  |
 | `u0`                          | `u₀`        | x component of the position unit vector                                                                                   |
 | `u1`                          | `u₁`        | y component of the position unit vector                                                                                   |
 | `u2`                          | `u₂`        | z component of the position unit vector                                                                                   |
