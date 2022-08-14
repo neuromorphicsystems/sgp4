@@ -1,4 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 /// Model of the Earth radius and gravitational field
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct Geopotential {
     /// Equatorial radius of the earth in km
     // aₑ
