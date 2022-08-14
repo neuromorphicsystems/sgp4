@@ -1,6 +1,6 @@
 ```toml
 [dependencies]
-sgp4 = "0.6"
+sgp4 = "0.7"
 ```
 
 The SGP4 algorithm, ported to Rust from the reference Celestrak implementation [[1]](#1).
