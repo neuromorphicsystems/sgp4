@@ -1,6 +1,6 @@
 [package]
 name = "sgp4"
-version = "0.6.2"
+version = "0.7.0"
 authors = ["International Centre for Neuromorphic Systems", "Alexandre Marcireau"]
 description = "A pure Rust implementation of the SGP4 algorithm for satellite propagation"
 homepage = "https://github.com/neuromorphicsystems/sgp4/"
@@ -9,7 +9,7 @@ readme = "README.md"
 license = "MIT"
 keywords = ["SGP4", "SDP4", "TLE", "OMM"]
 categories = ["science"]
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 chrono = {version = "0.4", features = ["serde"]}
@@ -19,7 +19,7 @@ serde_json = "1.0"
 [dev-dependencies]
 criterion = "0.3"
 toml = "0.5"
-ureq = {version = "2.4", features = ["json"]}
+ureq = {version = "2.5", features = ["json"]}
 
 [[bench]]
 name = "propagate"
