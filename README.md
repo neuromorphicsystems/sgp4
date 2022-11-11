@@ -42,7 +42,7 @@ We drew inspiration from the incomplete https://github.com/natronics/rust-sgp4 t
 
 ## Documentation
 
-The code documentation is hosted at [https://docs.rs/sgp4/0.6.0/sgp4/](https://docs.rs/sgp4/0.6.0/sgp4/).
+The code documentation is hosted at [https://docs.rs/crate/sgp4/latest](https://docs.rs/crate/sgp4/latest).
 
 Examples can be found in this repository's _examples_ directory:
 

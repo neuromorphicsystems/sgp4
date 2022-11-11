@@ -1,6 +1,6 @@
 [package]
 name = "sgp4"
-version = "0.8.1"
+version = "0.8.2"
 authors = [
     "International Centre for Neuromorphic Systems",
     "Alexandre Marcireau",
@@ -33,7 +33,6 @@ toml = "0.5"
 ureq = {version = "2.5", features = ["json"]}
 
 [package.metadata.docs.rs]
-features = ["alloc", "serde", "std", "libm"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
