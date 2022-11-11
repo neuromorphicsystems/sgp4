@@ -13,7 +13,6 @@ license = "MIT"
 categories = [
     "aerospace",
     "algorithms",
-    "embedded",
     "no-std",
     "parser-implementations",
     "science",
