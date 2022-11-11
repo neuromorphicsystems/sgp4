@@ -1,4 +1,4 @@
-fn main() -> sgp4::Result<()> {
+fn main() -> anyhow::Result<()> {
     let elements = sgp4::Elements::from_tle(
         Some("ISS (ZARYA)".to_owned()),
         "1 25544U 98067A   20194.88612269 -.00002218  00000-0 -31515-4 0  9992".as_bytes(),

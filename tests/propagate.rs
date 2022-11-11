@@ -3,7 +3,7 @@ mod test_cases;
 use test_cases::*;
 
 #[test]
-fn propagate() -> sgp4::Result<()> {
+fn propagate() -> anyhow::Result<()> {
     let test_cases: TestCases = toml::from_str(include_str!("../test_cases.toml")).unwrap();
     for test_case in test_cases.list.iter() {
         let constants =
@@ -29,9 +29,34 @@ fn propagate() -> sgp4::Result<()> {
                 State::Err { time, error } => {
                     let prediction = constants.propagate_afspc_compatibility_mode(*time);
                     if let Err(prediction_error) = prediction {
-                        assert_eq!(&format!("{}", prediction_error), error);
+                        match prediction_error {
+                            sgp4::Error::OutOfRangePerturbedEccentricity { eccentricity: _, t } => {
+                                if error != "diverging perturbed eccentricity" {
+                                    panic!(
+                                        "bad error type (expected {}, got {:?})",
+                                        error, prediction_error
+                                    );
+                                } else {
+                                    assert_eq!(*time, t);
+                                }
+                            }
+                            sgp4::Error::NegativeSemiLatusRectum { t } => {
+                                if error != "negative semi-latus rectum" {
+                                    panic!(
+                                        "bad error type (expected {}, got {:?})",
+                                        error, prediction_error
+                                    );
+                                } else {
+                                    assert_eq!(*time, t);
+                                }
+                            }
+                            _ => panic!(
+                                "bad error type (expected {}, got {:?})",
+                                error, prediction_error
+                            ),
+                        }
                     } else {
-                        panic!("propagation should have returned an errror");
+                        panic!("propagation should have returned an error");
                     }
                 }
             }

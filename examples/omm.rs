@@ -1,4 +1,4 @@
-fn main() -> sgp4::Result<()> {
+fn main() -> anyhow::Result<()> {
     let elements: sgp4::Elements = serde_json::from_str(
         r#"{
             "OBJECT_NAME": "ISS (ZARYA)",

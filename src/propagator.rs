@@ -1,12 +1,10 @@
 use crate::model;
 use crate::third_body;
-use serde::{Deserialize, Serialize};
 
 /// Predicted satellite position and velocity after SGP4 propagation
 ///
 /// The position and velocity are given in the True Equator, Mean Equinox (TEME) of epoch reference frame.
-#[derive(Serialize, Deserialize, PartialEq, Debug,)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Prediction {
     /// The three position components (x, y, z) in km
     pub position: [f64; 3],
@@ -16,8 +14,7 @@ pub struct Prediction {
 }
 
 /// The Brouwer orbital elements
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Orbit {
     /// Angle between the equator and the orbit plane in rad
     pub inclination: f64,
@@ -38,15 +35,13 @@ pub struct Orbit {
     pub mean_motion: f64,
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) enum Elliptic {
     No {},
     Yes { k11: f64, k12: f64, k13: f64 },
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) enum HighAltitude {
     No {},
     Yes {
@@ -63,8 +58,7 @@ pub(crate) enum HighAltitude {
     },
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) enum Resonance {
     OneDay {
         dr1: f64,
@@ -86,8 +80,7 @@ pub(crate) enum Resonance {
     },
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) enum Resonant {
     No {
         a0: f64,
@@ -100,8 +93,7 @@ pub(crate) enum Resonant {
     },
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) enum Method {
     NearEarth {
         a0: f64,
@@ -127,10 +119,9 @@ pub(crate) enum Method {
 /// They are not mutated during propagation, which means they can
 /// be used by different threads in parallel
 /// (for example to generate predictions at different times).
-#[derive(Serialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
-pub struct Constants<'a> {
-    pub(crate) geopotential: &'a model::Geopotential,
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct Constants {
+    pub(crate) geopotential: model::Geopotential,
     pub(crate) right_ascension_dot: f64,
     pub(crate) argument_of_perigee_dot: f64,
     pub(crate) mean_anomaly_dot: f64,

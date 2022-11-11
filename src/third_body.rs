@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
+#[cfg(not(feature = "std"))]
+use num_traits::Float;
 
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) struct Perturbations {
     kx0: f64,
     kx1: f64,
@@ -18,8 +18,7 @@ pub(crate) struct Perturbations {
     third_body_mean_anomaly_0: f64,
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) struct Dots {
     pub(crate) inclination: f64,
     pub(crate) right_ascension: f64,
@@ -178,7 +177,7 @@ pub(crate) fn perturbations_and_dots(
     //      │                                 or I₀ > π - 5.2359877 × 10⁻²
     //      │ - nₓ pₓ₁ (Zₓ₂₁ + Zₓ₂₃) / sin I₀ otherwise
     let third_body_right_ascension_dot =
-        if !(5.2359877e-2..=std::f64::consts::PI - 5.2359877e-2).contains(&inclination_0) {
+        if !(5.2359877e-2..=core::f64::consts::PI - 5.2359877e-2).contains(&inclination_0) {
             0.0
         } else {
             -third_body_mean_motion * px1 * (zx21 + zx23) / inclination_0.sin()

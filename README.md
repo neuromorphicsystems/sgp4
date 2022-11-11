@@ -1,6 +1,6 @@
 ```toml
 [dependencies]
-sgp4 = "0.7"
+sgp4 = "0.8"
 ```
 
 The SGP4 algorithm, ported to Rust from the reference Celestrak implementation [[1]](#1).
@@ -12,6 +12,7 @@ The numerical predictions are almost identical to those of the Celestrak impleme
 We drew inspiration from the incomplete https://github.com/natronics/rust-sgp4 to write mathematical expressions using UTF-8 characters.
 
 - [Documentation](#documentation)
+- [Environments without std or alloc](#environments-without-std-or-alloc)
 - [Benchmark](#benchmark)
 - [Variables and mathematical expressions](#variables-and-mathematical-expressions)
     - [Variables](#variables)
@@ -59,6 +60,12 @@ cargo run --example celestrak
 ```
 
 To run the Space-Track example, you must first assign your Space-Track.org credentials to the fields `identity` and `password` (see lines 3 and 4 in _examples/space-track.rs_).
+
+## Environments without std or alloc
+
+This crate supports `no_std` environments. TLE parsing and SGP4 propagation do not require `alloc` either. We use [num-traits](https://docs.rs/num-traits/latest/num_traits/) with [libm](https://docs.rs/libm/latest/libm/) for floating point functions when `std` is not available.
+
+All serde-related features, in particular OMM parsing, require `alloc`.
 
 ## Benchmark
 

@@ -1,118 +1,330 @@
 use chrono::{Datelike, Timelike};
+
+#[cfg(feature = "alloc")]
+use alloc::format;
+
+#[cfg(feature = "alloc")]
+use alloc::borrow::ToOwned;
+
+#[cfg(not(feature = "std"))]
+use num_traits::Float;
+
+#[cfg(feature = "serde")]
 use serde::de::Deserialize;
+
+/// TLE error
+#[derive(Debug, Clone)]
+pub enum ErrorTleWhat {
+    /// Incorrect line checksum
+    BadChecksum,
+
+    /// Incorrect line length
+    BadLength,
+
+    /// Incorrect first character
+    BadFirstCharacter,
+
+    /// Parsing a float field failed
+    ExpectedFloat,
+
+    /// Parsing a float field failed (special TLE float representation with assumed decimal point)
+    ExpectedFloatWithAssumedDecimalPoint,
+
+    /// Parsing an integer field failed
+    ExpectedInteger,
+
+    /// Found a non-space character between fields
+    ExpectedSpace,
+
+    /// Parsing a string field failed
+    ExpectedString,
+
+    /// Tried to parse a float (special TLE float representation with assumed decimal point)
+    /// with more than 16 ASCII characters
+    FloatWithAssumedDecimalPointTooLong,
+
+    /// NORAD mismatch between TLE lines
+    NoradIdMismatch,
+
+    /// Unknown classification code
+    UnknownClassification,
+}
+
+/// Input line where a parse error was found
+#[derive(Debug, Clone)]
+pub enum ErrorTleLine {
+    /// First TLE line (without taking the title line into account)
+    Line1,
+
+    /// Second TLE line (without taking the title line into account)
+    Line2,
+
+    /// The error is the result of a mismatch between lines
+    Both,
+}
 
 /// Represents an SGP4 error
 ///
-/// Errors can result from corrupted TLEs or OMMs, or if one of the orbital elements diverges during propagation.
+/// Errors can result from corrupted TLEs or if one of the orbital elements diverges during propagation.
 #[derive(Debug, Clone)]
-pub struct Error {
-    message: String,
+pub enum Error {
+    /// The epoch eccentricity is outside the range [0, 1[
+    OutOfRangeEpochEccentricity {
+        /// Eccentricity value (unitless)
+        eccentricity: f64,
+    },
+
+    /// The propagated eccentricity is outside the range [0, 1[ (before adding third-body perturbations)
+    OutOfRangeEccentricity {
+        /// Eccentricity value (unitless)
+        eccentricity: f64,
+
+        /// Minutes since epoch
+        t: f64,
+    },
+
+    /// The propagated eccentricity is outside the range [0, 1[ (after adding third-body perturbations)
+    OutOfRangePerturbedEccentricity {
+        /// Eccentricity value (unitless)
+        eccentricity: f64,
+
+        /// Minutes since epoch
+        t: f64,
+    },
+
+    /// The Brouwer mean motion calculated from epoch elements is negative
+    NegativeBrouwerMeanMotion,
+
+    /// The Kozai mean motion calculated from epoch elements is negative
+    NegativeKozaiMeanMotion,
+
+    /// The propagated semi-latus rectum is negative
+    NegativeSemiLatusRectum {
+        /// Minutes since epoch
+        t: f64,
+    },
+
+    /// TLE parse error
+    Tle {
+        /// TLE error type
+        what: ErrorTleWhat,
+
+        /// TLE error line
+        line: ErrorTleLine,
+
+        /// Start character position of the line slice that caused the error
+        start: usize,
+
+        /// End character position of the line slice that caused the error
+        end: usize,
+    },
 }
 
-impl Error {
-    /// Creates a new error from a string
-    ///
-    /// # Arguments
-    ///
-    /// * `message` - A description of the error
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # fn main() -> sgp4::Result<()> {
-    /// #     if false {
-    /// Err(sgp4::Error::new("a useful message".to_owned()))
-    /// #     } else {
-    /// #         Ok::<(), sgp4::Error>(())
-    /// #     }
-    /// # }
-    /// ```
-    ///
-    /// ```
-    /// # fn main() -> sgp4::Result<()> {
-    /// #     if false {
-    /// Err(sgp4::Error::new(format!("error code {}", 3)))
-    /// #     } else {
-    /// #         Ok::<(), sgp4::Error>(())
-    /// #     }
-    /// # }
-    /// ```
-    pub fn new(message: String) -> Error {
-        Error { message }
+/// The result type returned by SGP4 functions
+pub type Result<T> = core::result::Result<T, Error>;
+
+#[cfg(feature = "alloc")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+impl From<Error> for anyhow::Error {
+    fn from(error: Error) -> Self {
+        anyhow::Error::msg(match error {
+            Error::OutOfRangeEpochEccentricity{eccentricity} => format!(
+                "the eccentricity ({}) is outside the range [0, 1[ at epoch",
+                eccentricity
+            ),
+            Error::OutOfRangeEccentricity{eccentricity, t} => format!(
+                "the eccentricity without third-body perturbations ({}) is outside the range [0, 1[ {} min after epoch",
+                eccentricity,
+                t,
+            ),
+            Error::OutOfRangePerturbedEccentricity{eccentricity, t} => format!(
+                "the eccentricity with third-body perturbations ({}) is outside the range [0, 1[ {} min after epoch",
+                eccentricity,
+                t,
+            ),
+            Error::NegativeBrouwerMeanMotion => "the Brouwer mean motion is negative".to_owned(),
+            Error::NegativeKozaiMeanMotion => "the Kozai mean motion is negative".to_owned(),
+            Error::NegativeSemiLatusRectum {t} => format!("the semi-latus rectum is negative {} min after epoch", t),
+            Error::Tle {what, line, start, end} => format!("{} ({}..{}): {}",
+                match line {
+                    ErrorTleLine::Line1 => "TLE line 1",
+                    ErrorTleLine::Line2 => "TLE line 2",
+                    ErrorTleLine::Both => "TLE lines mismatch",
+                },
+                start,
+                end,
+                match what {
+                    ErrorTleWhat::BadChecksum => "bad checksum",
+                    ErrorTleWhat::BadLength => "bad length",
+                    ErrorTleWhat::BadFirstCharacter => "bad first character",
+                    ErrorTleWhat::ExpectedFloat => "expected a float",
+                    ErrorTleWhat::ExpectedFloatWithAssumedDecimalPoint  => "expected a float with assumed decimal point",
+                    ErrorTleWhat::ExpectedInteger => "expected an integer",
+                    ErrorTleWhat::ExpectedSpace => "expected a space",
+                    ErrorTleWhat::ExpectedString => "expected a string",
+                    ErrorTleWhat::FloatWithAssumedDecimalPointTooLong => "the float with assumed decimal point is too long",
+                    ErrorTleWhat::NoradIdMismatch => "the NORAD ids are different",
+                    ErrorTleWhat::UnknownClassification => "unknown classification",
+                }
+            )
+        })
     }
 }
 
-impl std::error::Error for Error {}
+trait TrimStart {
+    fn trim_ascii_start_polyfill(&self) -> &[u8];
+}
 
-impl std::fmt::Display for Error {
-    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(formatter, "{}", self.message)
+impl TrimStart for [u8] {
+    fn trim_ascii_start_polyfill(&self) -> &[u8] {
+        let mut bytes = self;
+        while let [first, rest @ ..] = bytes {
+            if first.is_ascii_whitespace() {
+                bytes = rest;
+            } else {
+                break;
+            }
+        }
+        bytes
     }
 }
 
-impl From<std::io::Error> for Error {
-    fn from(error: std::io::Error) -> Self {
-        Error::new(error.to_string())
+trait FromU8: Sized {
+    type Err;
+    fn from_u8(s: &[u8]) -> core::result::Result<Self, Self::Err>;
+}
+
+impl FromU8 for i8 {
+    type Err = core::num::ParseIntError;
+    fn from_u8(s: &[u8]) -> core::result::Result<Self, Self::Err> {
+        // SAFETY: parse calls from_str_radix which converts back to bytes.
+        unsafe { core::str::from_utf8_unchecked(s) }.parse()
     }
 }
 
-impl From<std::str::Utf8Error> for Error {
-    fn from(error: std::str::Utf8Error) -> Self {
-        Error::new(error.to_string())
+impl FromU8 for u8 {
+    type Err = core::num::ParseIntError;
+    fn from_u8(s: &[u8]) -> core::result::Result<Self, Self::Err> {
+        // SAFETY: parse calls from_str_radix which converts back to bytes.
+        unsafe { core::str::from_utf8_unchecked(s) }.parse()
     }
 }
 
-impl From<std::num::ParseIntError> for Error {
-    fn from(error: std::num::ParseIntError) -> Self {
-        Error::new(error.to_string())
+impl FromU8 for u64 {
+    type Err = core::num::ParseIntError;
+    fn from_u8(s: &[u8]) -> core::result::Result<Self, Self::Err> {
+        // SAFETY: parse calls from_str_radix which converts back to bytes.
+        unsafe { core::str::from_utf8_unchecked(s) }.parse()
+    }
+}
+impl FromU8 for f64 {
+    type Err = core::num::ParseFloatError;
+    fn from_u8(s: &[u8]) -> core::result::Result<Self, Self::Err> {
+        // SAFETY: parse calls dec2flt which converts back to bytes.
+        unsafe { core::str::from_utf8_unchecked(s) }.parse()
     }
 }
 
-impl From<std::num::ParseFloatError> for Error {
-    fn from(error: std::num::ParseFloatError) -> Self {
-        Error::new(error.to_string())
-    }
+trait Parse {
+    fn parse<F: FromU8>(&self) -> core::result::Result<F, F::Err>;
 }
 
-impl From<serde_json::Error> for Error {
-    fn from(error: serde_json::Error) -> Self {
-        Error::new(error.to_string())
+impl Parse for [u8] {
+    fn parse<F: FromU8>(&self) -> core::result::Result<F, F::Err> {
+        FromU8::from_u8(self)
     }
 }
 
 trait DecimalPointAssumedRepresentation {
-    fn parse_decimal_point_assumed(&self) -> Result<f64>;
+    fn parse_decimal_point_assumed(
+        &self,
+        line: ErrorTleLine,
+        start: usize,
+        end: usize,
+    ) -> Result<f64>;
 }
 
 impl DecimalPointAssumedRepresentation for [u8] {
-    fn parse_decimal_point_assumed(&self) -> Result<f64> {
-        let trimmed = std::str::from_utf8(self)?.trim_start();
-        if let Some(stripped) = trimmed.strip_prefix('-') {
-            Ok(format!("-.{}", stripped).parse::<f64>()?)
-        } else if let Some(stripped) = trimmed.strip_prefix('+') {
-            Ok(format!(".{}", stripped).parse::<f64>()?)
-        } else {
-            Ok(format!(".{}", trimmed).parse::<f64>()?)
+    fn parse_decimal_point_assumed(
+        &self,
+        line: ErrorTleLine,
+        start: usize,
+        end: usize,
+    ) -> Result<f64> {
+        let trimmed = self.trim_ascii_start_polyfill();
+        if trimmed.is_empty() {
+            return Err(Error::Tle {
+                what: ErrorTleWhat::ExpectedFloatWithAssumedDecimalPoint,
+                line,
+                start,
+                end,
+            });
         }
+        let mut raw_buffer = [0_u8; 16];
+        let length;
+        if trimmed[0] == b'-' {
+            if trimmed.len() < 2 || trimmed.len() + 1 > raw_buffer.len() {
+                return Err(Error::Tle {
+                    what: ErrorTleWhat::FloatWithAssumedDecimalPointTooLong,
+                    line,
+                    start,
+                    end,
+                });
+            }
+            raw_buffer[0] = b'-';
+            raw_buffer[1] = b'.';
+            raw_buffer[2..trimmed.len() + 1].copy_from_slice(&trimmed[1..]);
+            length = trimmed.len() + 1;
+        } else if trimmed[0] == b'+' {
+            if trimmed.len() < 2 || trimmed.len() > raw_buffer.len() {
+                return Err(Error::Tle {
+                    what: ErrorTleWhat::FloatWithAssumedDecimalPointTooLong,
+                    line,
+                    start,
+                    end,
+                });
+            }
+            raw_buffer[0] = b'.';
+            raw_buffer[1..trimmed.len()].copy_from_slice(&trimmed[1..]);
+            length = trimmed.len();
+        } else {
+            if trimmed.len() + 1 > raw_buffer.len() {
+                return Err(Error::Tle {
+                    what: ErrorTleWhat::FloatWithAssumedDecimalPointTooLong,
+                    line,
+                    start,
+                    end,
+                });
+            }
+            raw_buffer[0] = b'.';
+            raw_buffer[1..trimmed.len() + 1].copy_from_slice(trimmed);
+            length = trimmed.len() + 1;
+        }
+        // SAFETY: parse calls dec2flt which immediately converts back to bytes.
+        raw_buffer[0..length]
+            .parse::<f64>()
+            .map_err(|_| Error::Tle {
+                what: ErrorTleWhat::ExpectedFloatWithAssumedDecimalPoint,
+                line,
+                start,
+                end,
+            })
     }
 }
 
-/// The result type returned by SGP4 functions
-pub type Result<T> = std::result::Result<T, Error>;
-
 /// A satellite's elements classification
-#[derive(serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Classification {
     /// Declassfied objects or objects without a classification
-    #[serde(rename = "U")]
+    #[cfg_attr(feature = "serde", serde(rename = "U"))]
     Unclassified,
 
     /// Would cause "serious damage" to national security if it were publicly available
-    #[serde(rename = "C")]
+    #[cfg_attr(feature = "serde", serde(rename = "C"))]
     Classified,
 
     /// Would cause "damage" or be prejudicial to national security if publicly available
-    #[serde(rename = "S")]
+    #[cfg_attr(feature = "serde", serde(rename = "S"))]
     Secret,
 }
 
@@ -131,7 +343,7 @@ pub enum Classification {
 ///
 /// # Example
 /// ```
-/// # fn main() -> sgp4::Result<()> {
+/// # fn main() -> anyhow::Result<()> {
 /// let elements: sgp4::Elements = serde_json::from_str(
 ///     r#"{
 ///         "OBJECT_NAME": "ISS (ZARYA)",
@@ -155,81 +367,128 @@ pub enum Classification {
 /// )?;
 /// #     Ok(())
 /// # }
-#[derive(serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Elements {
     /// The name associated with the satellite
-    #[serde(rename = "OBJECT_NAME")]
-    pub object_name: Option<String>,
+    #[cfg_attr(
+        all(feature = "alloc", feature = "serde"),
+        serde(rename = "OBJECT_NAME")
+    )]
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+    pub object_name: Option<alloc::string::String>,
 
     /// The satellite's international designator
     ///
     /// It consists of the launch year, the launch number of that year and
     /// a letter code representing the sequential identifier of a piece in a launch.
-    #[serde(rename = "OBJECT_ID")]
-    pub international_designator: Option<String>,
+    #[cfg_attr(all(feature = "alloc", feature = "serde"), serde(rename = "OBJECT_ID"))]
+    #[cfg(feature = "alloc")]
+    #[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+    pub international_designator: Option<alloc::string::String>,
 
     /// The catalog number USSPACECOM has designated for this object
-    #[serde(rename = "NORAD_CAT_ID", deserialize_with = "u64_or_string")]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "NORAD_CAT_ID", deserialize_with = "u64_or_string")
+    )]
     pub norad_id: u64,
 
     /// The elements' classification
-    #[serde(rename = "CLASSIFICATION_TYPE")]
+    #[cfg_attr(feature = "serde", serde(rename = "CLASSIFICATION_TYPE"))]
     pub classification: Classification,
 
     /// The UTC timestamp of the elements
-    #[serde(rename = "EPOCH")]
+    #[cfg_attr(feature = "serde", serde(rename = "EPOCH"))]
     pub datetime: chrono::naive::NaiveDateTime,
 
     /// Time derivative of the mean motion
-    #[serde(rename = "MEAN_MOTION_DOT", deserialize_with = "f64_or_string")]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "MEAN_MOTION_DOT", deserialize_with = "f64_or_string")
+    )]
     pub mean_motion_dot: f64,
 
     /// Second time derivative of the mean motion
-    #[serde(rename = "MEAN_MOTION_DDOT", deserialize_with = "f64_or_string")]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "MEAN_MOTION_DDOT", deserialize_with = "f64_or_string")
+    )]
     pub mean_motion_ddot: f64,
 
     /// Radiation pressure coefficient in earth radii⁻¹
-    #[serde(rename = "BSTAR", deserialize_with = "f64_or_string")]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "BSTAR", deserialize_with = "f64_or_string")
+    )]
     pub drag_term: f64,
 
     /// A running count of all 2 line element sets generated by USSPACECOM for this object
-    #[serde(rename = "ELEMENT_SET_NO", deserialize_with = "u64_or_string")]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "ELEMENT_SET_NO", deserialize_with = "u64_or_string")
+    )]
     pub element_set_number: u64,
 
     /// Angle between the equator and the orbit plane in deg
-    #[serde(rename = "INCLINATION", deserialize_with = "f64_or_string")]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "INCLINATION", deserialize_with = "f64_or_string")
+    )]
     pub inclination: f64,
 
     /// Angle between vernal equinox and the point where the orbit crosses the equatorial plane in deg
-    #[serde(rename = "RA_OF_ASC_NODE", deserialize_with = "f64_or_string")]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "RA_OF_ASC_NODE", deserialize_with = "f64_or_string")
+    )]
     pub right_ascension: f64,
 
     /// The shape of the orbit
-    #[serde(rename = "ECCENTRICITY", deserialize_with = "f64_or_string")]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "ECCENTRICITY", deserialize_with = "f64_or_string")
+    )]
     pub eccentricity: f64,
 
     /// Angle between the ascending node and the orbit's point of closest approach to the earth in deg
-    #[serde(rename = "ARG_OF_PERICENTER", deserialize_with = "f64_or_string")]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "ARG_OF_PERICENTER", deserialize_with = "f64_or_string")
+    )]
     pub argument_of_perigee: f64,
 
     /// Angle of the satellite location measured from perigee in deg
-    #[serde(rename = "MEAN_ANOMALY", deserialize_with = "f64_or_string")]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "MEAN_ANOMALY", deserialize_with = "f64_or_string")
+    )]
     pub mean_anomaly: f64,
 
     /// Mean number of orbits per day in day⁻¹ (Kozai convention)
-    #[serde(rename = "MEAN_MOTION", deserialize_with = "f64_or_string")]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "MEAN_MOTION", deserialize_with = "f64_or_string")
+    )]
     pub mean_motion: f64,
 
     /// The orbit number at epoch
-    #[serde(rename = "REV_AT_EPOCH", deserialize_with = "u64_or_string")]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "REV_AT_EPOCH", deserialize_with = "u64_or_string")
+    )]
     pub revolution_number: u64,
 
     /// NORAD internal use, always 0 in distributed data
-    #[serde(rename = "EPHEMERIS_TYPE", deserialize_with = "u8_or_string")]
+    #[cfg_attr(
+        feature = "serde",
+        serde(rename = "EPHEMERIS_TYPE", deserialize_with = "u8_or_string")
+    )]
     pub ephemeris_type: u8,
 }
 
-fn u64_or_string<'de, D>(deserializer: D) -> std::result::Result<u64, D::Error>
+#[cfg(feature = "serde")]
+fn u64_or_string<'de, D>(deserializer: D) -> core::result::Result<u64, D::Error>
 where
     D: serde::de::Deserializer<'de>,
 {
@@ -244,7 +503,8 @@ where
     }
 }
 
-fn u8_or_string<'de, D>(deserializer: D) -> std::result::Result<u8, D::Error>
+#[cfg(feature = "serde")]
+fn u8_or_string<'de, D>(deserializer: D) -> core::result::Result<u8, D::Error>
 where
     D: serde::de::Deserializer<'de>,
 {
@@ -260,7 +520,8 @@ where
     }
 }
 
-fn f64_or_string<'de, D>(deserializer: D) -> std::result::Result<f64, D::Error>
+#[cfg(feature = "serde")]
+fn f64_or_string<'de, D>(deserializer: D) -> core::result::Result<f64, D::Error>
 where
     D: serde::de::Deserializer<'de>,
 {
@@ -276,6 +537,282 @@ where
 }
 
 impl Elements {
+    fn from_lines(line1: &[u8], line2: &[u8]) -> Result<Elements> {
+        if line1.len() != 69 {
+            return Err(Error::Tle {
+                what: ErrorTleWhat::BadLength,
+                line: ErrorTleLine::Line1,
+                start: 0,
+                end: line1.len(),
+            });
+        }
+        if line2.len() != 69 {
+            return Err(Error::Tle {
+                what: ErrorTleWhat::BadLength,
+                line: ErrorTleLine::Line2,
+                start: 0,
+                end: line2.len(),
+            });
+        }
+        if line1[0] != b'1' {
+            return Err(Error::Tle {
+                what: ErrorTleWhat::BadFirstCharacter,
+                line: ErrorTleLine::Line1,
+                start: 0,
+                end: 1,
+            });
+        }
+        if line2[0] != b'2' {
+            return Err(Error::Tle {
+                what: ErrorTleWhat::BadFirstCharacter,
+                line: ErrorTleLine::Line2,
+                start: 0,
+                end: 1,
+            });
+        }
+        for index in [1, 8, 17, 32, 43, 52, 61, 63].iter() {
+            if line1[*index] != b' ' {
+                return Err(Error::Tle {
+                    what: ErrorTleWhat::ExpectedSpace,
+                    line: ErrorTleLine::Line1,
+                    start: *index,
+                    end: *index + 1,
+                });
+            }
+        }
+        for index in [1, 7, 16, 25, 33, 42, 51].iter() {
+            if line2[*index] != b' ' {
+                return Err(Error::Tle {
+                    what: ErrorTleWhat::ExpectedSpace,
+                    line: ErrorTleLine::Line2,
+                    start: *index,
+                    end: *index + 1,
+                });
+            }
+        }
+        let norad_id = line1[2..7]
+            .trim_ascii_start_polyfill()
+            .parse::<u64>()
+            .map_err(|_| Error::Tle {
+                what: ErrorTleWhat::ExpectedInteger,
+                line: ErrorTleLine::Line1,
+                start: 2,
+                end: 7,
+            })?;
+        if norad_id
+            != line2[2..7]
+                .trim_ascii_start_polyfill()
+                .parse::<u64>()
+                .map_err(|_| Error::Tle {
+                    what: ErrorTleWhat::ExpectedInteger,
+                    line: ErrorTleLine::Line2,
+                    start: 2,
+                    end: 7,
+                })?
+        {
+            return Err(Error::Tle {
+                what: ErrorTleWhat::NoradIdMismatch,
+                line: ErrorTleLine::Both,
+                start: 2,
+                end: 7,
+            });
+        }
+        for (line, content) in [(ErrorTleLine::Line1, &line1), (ErrorTleLine::Line2, &line2)] {
+            if (content[..68]
+                .iter()
+                .fold(0, |accumulator, character| match character {
+                    b'-' => accumulator + 1,
+                    character if (&b'0'..=&b'9').contains(&character) => {
+                        accumulator + (character - b'0') as u16
+                    }
+                    _ => accumulator,
+                })
+                % 10) as u8
+                != content[68] - b'0'
+            {
+                return Err(Error::Tle {
+                    what: ErrorTleWhat::BadChecksum,
+                    line,
+                    start: 68,
+                    end: 69,
+                });
+            }
+        }
+        Ok(Elements {
+            #[cfg(feature = "alloc")]
+            object_name: None,
+            norad_id,
+            classification: match line1[7] {
+                b'U' => Classification::Unclassified,
+                b'C' => Classification::Classified,
+                b'S' => Classification::Secret,
+                _ => {
+                    return Err(Error::Tle {
+                        what: ErrorTleWhat::UnknownClassification,
+                        line: ErrorTleLine::Line1,
+                        start: 7,
+                        end: 8,
+                    })
+                }
+            },
+            #[cfg(feature = "alloc")]
+            international_designator: if line1[9..17]
+                .iter()
+                .all(|character| character.is_ascii_whitespace())
+            {
+                None
+            } else {
+                Some(format!(
+                    "{}-{}",
+                    match line1[9..11].parse::<u8>().map_err(|_| Error::Tle {
+                        what: ErrorTleWhat::ExpectedInteger,
+                        line: ErrorTleLine::Line1,
+                        start: 9,
+                        end: 11,
+                    })? {
+                        launch_year if launch_year < 57 => 2000 + launch_year as u16,
+                        launch_year => 1900 + launch_year as u16,
+                    },
+                    core::str::from_utf8(&line1[11..17])
+                        .map_err(|_| Error::Tle {
+                            what: ErrorTleWhat::ExpectedString,
+                            line: ErrorTleLine::Line1,
+                            start: 11,
+                            end: 17,
+                        })?
+                        .trim()
+                ))
+            },
+            datetime: {
+                let day = line1[20..32]
+                    .trim_ascii_start_polyfill()
+                    .parse::<f64>()
+                    .map_err(|_| Error::Tle {
+                        what: ErrorTleWhat::ExpectedFloat,
+                        line: ErrorTleLine::Line1,
+                        start: 20,
+                        end: 32,
+                    })?;
+                let seconds = day.fract() * (24.0 * 60.0 * 60.0);
+                chrono::NaiveDate::from_yo(
+                    match line1[18..20].parse::<u8>().map_err(|_| Error::Tle {
+                        what: ErrorTleWhat::ExpectedFloat,
+                        line: ErrorTleLine::Line1,
+                        start: 18,
+                        end: 20,
+                    })? {
+                        year if year < 57 => year as i32 + 2000,
+                        year => year as i32 + 1900,
+                    },
+                    day as u32,
+                )
+                .and_time(chrono::NaiveTime::from_num_seconds_from_midnight(
+                    seconds as u32,
+                    (seconds.fract() * 1e9).round() as u32,
+                ))
+            },
+            mean_motion_dot: line1[33..43]
+                .trim_ascii_start_polyfill()
+                .parse()
+                .map_err(|_| Error::Tle {
+                    what: ErrorTleWhat::ExpectedFloat,
+                    line: ErrorTleLine::Line1,
+                    start: 33,
+                    end: 43,
+                })?,
+            mean_motion_ddot: line1[44..50].parse_decimal_point_assumed(
+                ErrorTleLine::Line1,
+                44,
+                50,
+            )? * 10.0_f64.powi(line1[50..52].parse::<i8>().map_err(|_| {
+                Error::Tle {
+                    what: ErrorTleWhat::ExpectedFloat,
+                    line: ErrorTleLine::Line1,
+                    start: 50,
+                    end: 52,
+                }
+            })? as i32),
+            drag_term: line1[53..59].parse_decimal_point_assumed(ErrorTleLine::Line1, 53, 59)?
+                * 10.0_f64.powi(line1[59..61].parse::<i8>().map_err(|_| Error::Tle {
+                    what: ErrorTleWhat::ExpectedFloat,
+                    line: ErrorTleLine::Line1,
+                    start: 59,
+                    end: 61,
+                })? as i32),
+            ephemeris_type: line1[62..63]
+                .trim_ascii_start_polyfill()
+                .parse()
+                .map_err(|_| Error::Tle {
+                    what: ErrorTleWhat::ExpectedInteger,
+                    line: ErrorTleLine::Line1,
+                    start: 62,
+                    end: 63,
+                })?,
+            element_set_number: line1[64..68].trim_ascii_start_polyfill().parse().map_err(
+                |_| Error::Tle {
+                    what: ErrorTleWhat::ExpectedInteger,
+                    line: ErrorTleLine::Line1,
+                    start: 64,
+                    end: 68,
+                },
+            )?,
+            inclination: line2[8..16]
+                .trim_ascii_start_polyfill()
+                .parse()
+                .map_err(|_| Error::Tle {
+                    what: ErrorTleWhat::ExpectedFloat,
+                    line: ErrorTleLine::Line2,
+                    start: 8,
+                    end: 16,
+                })?,
+            right_ascension: line2[17..25]
+                .trim_ascii_start_polyfill()
+                .parse()
+                .map_err(|_| Error::Tle {
+                    what: ErrorTleWhat::ExpectedFloat,
+                    line: ErrorTleLine::Line2,
+                    start: 17,
+                    end: 25,
+                })?,
+            eccentricity: line2[26..33].parse_decimal_point_assumed(ErrorTleLine::Line2, 26, 33)?,
+            argument_of_perigee: line2[34..42].trim_ascii_start_polyfill().parse().map_err(
+                |_| Error::Tle {
+                    what: ErrorTleWhat::ExpectedFloat,
+                    line: ErrorTleLine::Line2,
+                    start: 34,
+                    end: 42,
+                },
+            )?,
+            mean_anomaly: line2[43..51]
+                .trim_ascii_start_polyfill()
+                .parse()
+                .map_err(|_| Error::Tle {
+                    what: ErrorTleWhat::ExpectedFloat,
+                    line: ErrorTleLine::Line2,
+                    start: 43,
+                    end: 51,
+                })?,
+            mean_motion: line2[52..63]
+                .trim_ascii_start_polyfill()
+                .parse()
+                .map_err(|_| Error::Tle {
+                    what: ErrorTleWhat::ExpectedFloat,
+                    line: ErrorTleLine::Line2,
+                    start: 52,
+                    end: 63,
+                })?,
+            revolution_number: line2[63..68]
+                .trim_ascii_start_polyfill()
+                .parse()
+                .map_err(|_| Error::Tle {
+                    what: ErrorTleWhat::ExpectedInteger,
+                    line: ErrorTleLine::Line2,
+                    start: 63,
+                    end: 68,
+                })?,
+        })
+    }
+
     /// Parses a Two-Line Element Set (TLE) with an optionnal title
     ///
     /// # Arguments
@@ -296,120 +833,20 @@ impl Elements {
     /// #     Ok(())
     /// # }
     /// ```
-    pub fn from_tle(object_name: Option<String>, line1: &[u8], line2: &[u8]) -> Result<Elements> {
-        if line1.len() != 69 {
-            return Err(Error::new("line 1 must have 69 characters".to_owned()));
-        }
-        if line2.len() != 69 {
-            return Err(Error::new("line 2 must have 69 characters".to_owned()));
-        }
-        if line1[0] != b'1' {
-            return Err(Error::new(
-                "line 1 must start with the character '1'".to_owned(),
-            ));
-        }
-        if line2[0] != b'2' {
-            return Err(Error::new(
-                "line 2 must start with the character '2'".to_owned(),
-            ));
-        }
-        for index in [1, 8, 17, 32, 43, 52, 61, 63].iter() {
-            if line1[*index] != b' ' {
-                return Err(Error::new(format!(
-                    "line 1:{} must be a space character",
-                    index + 1
-                )));
-            }
-        }
-        for index in [1, 7, 16, 25, 33, 42, 51].iter() {
-            if line2[*index] != b' ' {
-                return Err(Error::new(format!(
-                    "line 2:{} must be a space character",
-                    index + 1
-                )));
-            }
-        }
-        let norad_id = std::str::from_utf8(&line1[2..7])?
-            .trim_start()
-            .parse::<u64>()?;
-        if norad_id
-            != std::str::from_utf8(&line2[2..7])?
-                .trim_start()
-                .parse::<u64>()?
-        {
-            return Err(Error::new(
-                "line 1 and 2 have different satellite numbers".to_owned(),
-            ));
-        }
-        for line in &[line1, line2] {
-            if (line[..68]
-                .iter()
-                .fold(0, |accumulator, character| match character {
-                    b'-' => accumulator + 1,
-                    character if (&b'0'..=&b'9').contains(&character) => {
-                        accumulator + (character - b'0') as u16
-                    }
-                    _ => accumulator,
-                })
-                % 10) as u8
-                != line[68] - b'0'
-            {
-                return Err(Error::new("bad checksum".to_owned()));
-            }
-        }
-        Ok(Elements {
-            object_name,
-            norad_id,
-            classification: match line1[7] {
-                b'U' => Classification::Unclassified,
-                b'C' => Classification::Classified,
-                b'S' => Classification::Secret,
-                _ => return Err(Error::new("unknown classification".to_owned())),
-            },
-            international_designator: if line1[9..17].iter().all(|character| *character == b' ') {
-                None
-            } else {
-                Some(format!(
-                    "{}-{}",
-                    match std::str::from_utf8(&line1[9..11])?.parse::<u8>()? {
-                        launch_year if launch_year < 57 => 2000 + launch_year as u16,
-                        launch_year => 1900 + launch_year as u16,
-                    },
-                    std::str::from_utf8(&line1[11..17])?.trim()
-                ))
-            },
-            datetime: {
-                let day = std::str::from_utf8(&line1[20..32])?
-                    .trim_start()
-                    .parse::<f64>()?;
-                let seconds = day.fract() * (24.0 * 60.0 * 60.0);
-                chrono::NaiveDate::from_yo(
-                    match std::str::from_utf8(&line1[18..20])?.parse::<u8>()? {
-                        year if year < 57 => year as i32 + 2000,
-                        year => year as i32 + 1900,
-                    },
-                    day as u32,
-                )
-                .and_time(chrono::NaiveTime::from_num_seconds_from_midnight(
-                    seconds as u32,
-                    (seconds.fract() * 1e9).round() as u32,
-                ))
-            },
-            mean_motion_dot: std::str::from_utf8(&line1[33..43])?.trim_start().parse()?,
-            mean_motion_ddot: line1[44..50].parse_decimal_point_assumed()?
-                * 10.0_f64.powi(std::str::from_utf8(&line1[50..52])?.parse::<i8>()? as i32),
-            drag_term: line1[53..59].parse_decimal_point_assumed()?
-                * 10.0_f64.powi(std::str::from_utf8(&line1[59..61])?.parse::<i8>()? as i32),
-            ephemeris_type: std::str::from_utf8(&line1[62..63])?.trim_start().parse()?,
-            element_set_number: std::str::from_utf8(&line1[64..68])?.trim_start().parse()?,
-            inclination: std::str::from_utf8(&line2[8..16])?.trim_start().parse()?,
-            right_ascension: std::str::from_utf8(&line2[17..25])?.trim_start().parse()?,
-            eccentricity: line2[26..33].parse_decimal_point_assumed()?,
-            argument_of_perigee: std::str::from_utf8(&line2[34..42])?.trim_start().parse()?,
-            mean_anomaly: std::str::from_utf8(&line2[43..51])?.trim_start().parse()?,
-            mean_motion: std::str::from_utf8(&line2[52..63])?.trim_start().parse()?,
-            revolution_number: std::str::from_utf8(&line2[63..68])?.trim_start().parse()?,
-        })
+    #[cfg(feature = "alloc")]
+    pub fn from_tle(
+        object_name: Option<alloc::string::String>,
+        line1: &[u8],
+        line2: &[u8],
+    ) -> Result<Elements> {
+        let mut result = Self::from_lines(line1, line2)?;
+        result.object_name = object_name;
+        Ok(result)
+    }
+
+    #[cfg(not(feature = "alloc"))]
+    pub fn from_tle(line1: &[u8], line2: &[u8]) -> Result<Elements> {
+        Self::from_lines(line1, line2)
     }
 
     /// Returns the number of years since UTC 1 January 2000 12h00 (J2000)
@@ -462,10 +899,12 @@ impl Elements {
 /// # Arguments
 ///
 /// * `tles` - A string containing multiple lines
-pub fn parse_2les(tles: &str) -> Result<Vec<Elements>> {
+#[cfg(feature = "alloc")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+pub fn parse_2les(tles: &str) -> Result<alloc::vec::Vec<Elements>> {
     let mut line_buffer = "";
     let mut first = true;
-    let mut elements_group = Vec::new();
+    let mut elements_group = alloc::vec::Vec::new();
     for line in tles.lines() {
         if first {
             line_buffer = line;
@@ -489,10 +928,12 @@ pub fn parse_2les(tles: &str) -> Result<Vec<Elements>> {
 /// # Arguments
 ///
 /// * `tles` - A string containing multiple lines
-pub fn parse_3les(tles: &str) -> Result<Vec<Elements>> {
+#[cfg(feature = "alloc")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+pub fn parse_3les(tles: &str) -> Result<alloc::vec::Vec<Elements>> {
     let mut lines_buffer = ["", ""];
     let mut index = 0;
-    let mut elements_group = Vec::new();
+    let mut elements_group = alloc::vec::Vec::new();
     for line in tles.lines() {
         match index {
             0 | 1 => {
@@ -524,8 +965,9 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "serde")]
     #[test]
-    fn test_from_celestrak_omm() -> Result<()> {
+    fn test_from_celestrak_omm() -> anyhow::Result<()> {
         let elements: Elements = serde_json::from_str(
             r#"{
                 "OBJECT_NAME": "ISS (ZARYA)",
@@ -587,7 +1029,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_space_track_omm() -> Result<()> {
+    fn test_from_space_track_omm() -> anyhow::Result<()> {
         let elements: Elements = serde_json::from_str(
             r#"{"CCSDS_OMM_VERS":"2.0",
                 "COMMENT":"GENERATED VIA SPACE-TRACK.ORG API",
@@ -668,7 +1110,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_celestrak_omms() -> Result<()> {
+    fn test_from_celestrak_omms() -> anyhow::Result<()> {
         let elements_group: Vec<Elements> = serde_json::from_str(
             r#"[{
                 "OBJECT_NAME": "ISS (ZARYA)",

@@ -11,37 +11,41 @@
 //! and predicts the satellites' positions and velocities after 12 h and 24 h.
 //!
 //! ```
-//! fn main() -> sgp4::Result<()> {
-//!     match ureq::get("https://celestrak.com/NORAD/elements/gp.php")
+//! fn main() -> anyhow::Result<()> {
+//!     let response = ureq::get("https://celestrak.com/NORAD/elements/gp.php")
 //!         .query("GROUP", "galileo")
 //!         .query("FORMAT", "json")
-//!         .call()
-//!     {
-//!         Ok(response) => {
-//!             let elements_group: Vec<sgp4::Elements> = response.into_json()?;
-//!             for elements in &elements_group {
-//!                 println!("{}", elements.object_name.as_ref().unwrap());
-//!                 let constants = sgp4::Constants::from_elements(elements)?;
-//!                 for hours in &[12, 24] {
-//!                     println!("    t = {} min", hours * 60);
-//!                     let prediction = constants.propagate((hours * 60) as f64)?;
-//!                     println!("        r = {:?} km", prediction.position);
-//!                     println!("        ṙ = {:?} km.s⁻¹", prediction.velocity);
-//!                 }
-//!             }
-//!             Ok(())
+//!         .call()?;
+//!     let elements_group: Vec<sgp4::Elements> = response.into_json()?;
+//!     for elements in &elements_group {
+//!         println!("{}", elements.object_name.as_ref().unwrap());
+//!         let constants = sgp4::Constants::from_elements(elements)?;
+//!         for hours in &[12, 24] {
+//!             println!("    t = {} min", hours * 60);
+//!             let prediction = constants.propagate((hours * 60) as f64)?;
+//!             println!("        r = {:?} km", prediction.position);
+//!             println!("        ṙ = {:?} km.s⁻¹", prediction.velocity);
 //!         }
-//!         Err(ureq::Error::Status(code, response)) => Err(sgp4::Error::new(format!(
-//!             "network error {}: {}",
-//!             code,
-//!             response.into_string()?
-//!         ))),
-//!         Err(error) => Err(sgp4::Error::new(error.to_string())),
 //!     }
+//!     Ok(())
 //! }
 //! ```
 //! More examples can be found in the repository [https://github.com/neuromorphicsystems/sgp4/tree/master/examples](https://github.com/neuromorphicsystems/sgp4/tree/master/examples).
 //!
+
+#![cfg_attr(not(feature = "std"), no_std)]
+
+#[cfg(not(any(feature = "std", feature = "libm")))]
+compile_error!("either feature \"std\" or feature \"libm\" must be enabled");
+
+#[cfg(all(feature = "std", feature = "libm"))]
+compile_error!("feature \"std\" and feature \"libm\" cannot be enabled at the same time");
+
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
+#[cfg(not(feature = "std"))]
+use num_traits::Float;
 
 mod deep_space;
 mod gp;
@@ -49,10 +53,7 @@ mod model;
 mod near_earth;
 mod propagator;
 mod third_body;
-
 pub use deep_space::ResonanceState;
-pub use gp::parse_2les;
-pub use gp::parse_3les;
 pub use gp::Classification;
 pub use gp::Elements;
 pub use gp::Error;
@@ -65,6 +66,14 @@ pub use model::WGS84;
 pub use propagator::Constants;
 pub use propagator::Orbit;
 pub use propagator::Prediction;
+
+#[cfg(feature = "alloc")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+pub use gp::parse_2les;
+
+#[cfg(feature = "alloc")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+pub use gp::parse_3les;
 
 impl Orbit {
     /// Creates a new Brouwer orbit representation from Kozai elements
@@ -94,12 +103,12 @@ impl Orbit {
     /// )?;
     /// let orbit_0 = sgp4::Orbit::from_kozai_elements(
     ///     &sgp4::WGS84,
-    ///     elements.inclination * (std::f64::consts::PI / 180.0),
-    ///     elements.right_ascension * (std::f64::consts::PI / 180.0),
+    ///     elements.inclination * (core::f64::consts::PI / 180.0),
+    ///     elements.right_ascension * (core::f64::consts::PI / 180.0),
     ///     elements.eccentricity,
-    ///     elements.argument_of_perigee * (std::f64::consts::PI / 180.0),
-    ///     elements.mean_anomaly * (std::f64::consts::PI / 180.0),
-    ///     elements.mean_motion * (std::f64::consts::PI / 720.0),
+    ///     elements.argument_of_perigee * (core::f64::consts::PI / 180.0),
+    ///     elements.mean_anomaly * (core::f64::consts::PI / 180.0),
+    ///     elements.mean_motion * (core::f64::consts::PI / 720.0),
     /// )?;
     /// #     Ok(())
     /// # }
@@ -114,9 +123,7 @@ impl Orbit {
         kozai_mean_motion: f64,
     ) -> Result<Self> {
         if kozai_mean_motion <= 0.0 {
-            Err(Error::new(
-                "the Kozai mean motion must be positive".to_owned(),
-            ))
+            Err(gp::Error::NegativeKozaiMeanMotion)
         } else {
             let mean_motion = {
                 // a₁ = (kₑ / n₀)²ᐟ³
@@ -142,9 +149,7 @@ impl Orbit {
                 kozai_mean_motion / (1.0 + d0)
             };
             if mean_motion <= 0.0 {
-                Err(Error::new(
-                    "the Brouwer mean motion must be positive".to_owned(),
-                ))
+                Err(gp::Error::NegativeBrouwerMeanMotion)
             } else {
                 Ok(propagator::Orbit {
                     inclination,
@@ -159,7 +164,7 @@ impl Orbit {
     }
 }
 
-impl<'a> Constants<'a> {
+impl Constants {
     /// Initializes a new propagator from epoch quantities
     ///
     /// If the orbital elements are obtained from a TLE or OMM,
@@ -184,34 +189,34 @@ impl<'a> Constants<'a> {
     ///     "2 25544  51.6461 221.2784 0001413  89.1723 280.4612 15.49507896236008".as_bytes(),
     /// )?;
     /// let constants = sgp4::Constants::new(
-    ///     &sgp4::WGS84,
+    ///     sgp4::WGS84,
     ///     sgp4::iau_epoch_to_sidereal_time,
     ///     elements.epoch(),
     ///     elements.drag_term,
     ///     sgp4::Orbit::from_kozai_elements(
     ///         &sgp4::WGS84,
-    ///         elements.inclination * (std::f64::consts::PI / 180.0),
-    ///         elements.right_ascension * (std::f64::consts::PI / 180.0),
+    ///         elements.inclination * (core::f64::consts::PI / 180.0),
+    ///         elements.right_ascension * (core::f64::consts::PI / 180.0),
     ///         elements.eccentricity,
-    ///         elements.argument_of_perigee * (std::f64::consts::PI / 180.0),
-    ///         elements.mean_anomaly * (std::f64::consts::PI / 180.0),
-    ///         elements.mean_motion * (std::f64::consts::PI / 720.0),
+    ///         elements.argument_of_perigee * (core::f64::consts::PI / 180.0),
+    ///         elements.mean_anomaly * (core::f64::consts::PI / 180.0),
+    ///         elements.mean_motion * (core::f64::consts::PI / 720.0),
     ///     )?,
     /// )?;
     /// #     Ok(())
     /// # }
     /// ```
     pub fn new(
-        geopotential: &'a Geopotential,
+        geopotential: Geopotential,
         epoch_to_sidereal_time: impl Fn(f64) -> f64,
         epoch: f64,
         drag_term: f64,
         orbit_0: propagator::Orbit,
     ) -> Result<Self> {
         if orbit_0.eccentricity < 0.0 || orbit_0.eccentricity >= 1.0 {
-            Err(Error::new(
-                "the eccentricity must be in the range [0, 1[".to_owned(),
-            ))
+            Err(gp::Error::OutOfRangeEpochEccentricity {
+                eccentricity: orbit_0.eccentricity,
+            })
         } else {
             // p₁ = cos I₀
             let p1 = orbit_0.inclination.cos();
@@ -337,7 +342,7 @@ impl<'a> Constants<'a> {
             // k₁ = ³/₂ C₁
             let k1 = 1.5 * c1;
 
-            if orbit_0.mean_motion > 2.0 * std::f64::consts::PI / 225.0 {
+            if orbit_0.mean_motion > 2.0 * core::f64::consts::PI / 225.0 {
                 Ok(near_earth::constants(
                     geopotential,
                     drag_term,
@@ -407,18 +412,18 @@ impl<'a> Constants<'a> {
     /// ```
     pub fn from_elements(elements: &Elements) -> Result<Self> {
         Constants::new(
-            &WGS84,
+            WGS84,
             iau_epoch_to_sidereal_time,
             elements.epoch(),
             elements.drag_term,
             Orbit::from_kozai_elements(
                 &WGS84,
-                elements.inclination * (std::f64::consts::PI / 180.0),
-                elements.right_ascension * (std::f64::consts::PI / 180.0),
+                elements.inclination * (core::f64::consts::PI / 180.0),
+                elements.right_ascension * (core::f64::consts::PI / 180.0),
                 elements.eccentricity,
-                elements.argument_of_perigee * (std::f64::consts::PI / 180.0),
-                elements.mean_anomaly * (std::f64::consts::PI / 180.0),
-                elements.mean_motion * (std::f64::consts::PI / 720.0),
+                elements.argument_of_perigee * (core::f64::consts::PI / 180.0),
+                elements.mean_anomaly * (core::f64::consts::PI / 180.0),
+                elements.mean_motion * (core::f64::consts::PI / 720.0),
             )?,
         )
     }
@@ -448,18 +453,18 @@ impl<'a> Constants<'a> {
     /// ```
     pub fn from_elements_afspc_compatibility_mode(elements: &Elements) -> Result<Self> {
         Constants::new(
-            &WGS72,
+            WGS72,
             afspc_epoch_to_sidereal_time,
             elements.epoch_afspc_compatibility_mode(),
             elements.drag_term,
             Orbit::from_kozai_elements(
                 &WGS72,
-                elements.inclination * (std::f64::consts::PI / 180.0),
-                elements.right_ascension * (std::f64::consts::PI / 180.0),
+                elements.inclination * (core::f64::consts::PI / 180.0),
+                elements.right_ascension * (core::f64::consts::PI / 180.0),
                 elements.eccentricity,
-                elements.argument_of_perigee * (std::f64::consts::PI / 180.0),
-                elements.mean_anomaly * (std::f64::consts::PI / 180.0),
-                elements.mean_motion * (std::f64::consts::PI / 720.0),
+                elements.argument_of_perigee * (core::f64::consts::PI / 180.0),
+                elements.mean_anomaly * (core::f64::consts::PI / 180.0),
+                elements.mean_motion * (core::f64::consts::PI / 720.0),
             )?,
         )
     }
@@ -598,7 +603,7 @@ impl<'a> Constants<'a> {
 
         // p₃₈ = M + ω + p₃₇ p₃₅ aₓₙ rem 2π
         let p38 = (orbit.mean_anomaly + orbit.argument_of_perigee + p37 * p35 * axn)
-            % (2.0 * std::f64::consts::PI);
+            % (2.0 * core::f64::consts::PI);
 
         // (E + ω)₀ = p₃₈
         let mut ew = p38;
@@ -629,7 +634,7 @@ impl<'a> Constants<'a> {
         // pₗ = a (1 - p₃₉)
         let pl = a * (1.0 - p39);
         if pl < 0.0 {
-            Err(Error::new("negative semi-latus rectum".to_owned()))
+            Err(gp::Error::NegativeSemiLatusRectum { t })
         } else {
             // p₄₀ = aₓₙ sin(E + ω) - aᵧₙ cos(E + ω)
             let p40 = axn * ew.sin() - ayn * ew.cos();

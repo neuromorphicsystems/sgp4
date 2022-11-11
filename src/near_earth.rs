@@ -2,9 +2,12 @@ use crate::gp;
 use crate::model;
 use crate::propagator;
 
+#[cfg(not(feature = "std"))]
+use num_traits::Float;
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn constants(
-    geopotential: &model::Geopotential,
+    geopotential: model::Geopotential,
     drag_term: f64,
     orbit_0: propagator::Orbit,
     p1: f64,
@@ -155,7 +158,7 @@ pub(crate) fn constants(
     }
 }
 
-impl<'a> propagator::Constants<'a> {
+impl propagator::Constants {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn near_earth_orbital_elements(
         &self,
@@ -221,7 +224,10 @@ impl<'a> propagator::Constants<'a> {
             }
         };
         if !(-0.001..1.0).contains(&p27) {
-            Err(gp::Error::new("diverging eccentricity".to_owned()))
+            Err(gp::Error::OutOfRangeEccentricity {
+                eccentricity: p27,
+                t,
+            })
         } else {
             // e = │ 10⁻⁶ if p₂₇ < 10⁻⁶
             //     │ p₂₇  otherwise

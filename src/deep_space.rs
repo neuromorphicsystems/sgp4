@@ -2,7 +2,13 @@ use crate::gp;
 use crate::model;
 use crate::propagator;
 use crate::third_body;
-use std::cmp::Ordering;
+use core::cmp::Ordering;
+
+#[cfg(not(feature = "std"))]
+use num_traits::Float;
+
+#[cfg(not(feature = "std"))]
+use num_traits::Euclid;
 
 // θ̇ = 4.37526908801129966 × 10⁻³ rad.min⁻¹
 #[allow(clippy::excessive_precision)]
@@ -100,7 +106,7 @@ impl ResonanceState {
         // θ = θ₀ + 4.37526908801129966 × 10⁻³ t rem 2π
         #[allow(clippy::excessive_precision)]
         let sidereal_time =
-            (sidereal_time_0 + t * 4.37526908801129966e-3) % (2.0 * std::f64::consts::PI);
+            (sidereal_time_0 + t * 4.37526908801129966e-3) % (2.0 * core::f64::consts::PI);
         let (delta_t, ordering) = if t > 0.0 {
             (DELTA_T, Ordering::Less)
         } else {
@@ -223,7 +229,7 @@ impl ResonanceState {
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn constants(
-    geopotential: &model::Geopotential,
+    geopotential: model::Geopotential,
     epoch_to_sidereal_time: impl Fn(f64) -> f64,
     epoch: f64,
     orbit_0: propagator::Orbit,
@@ -262,14 +268,14 @@ pub(crate) fn constants(
         SOLAR_PERTURBATION_COEFFICIENT,
         SOLAR_MEAN_MOTION,
         // Mₛ₀ = (6.2565837 + 0.017201977 d₁₉₀₀) rem 2π
-        (6.2565837 + 0.017201977 * d1900) % (2.0 * std::f64::consts::PI),
+        (6.2565837 + 0.017201977 * d1900) % (2.0 * core::f64::consts::PI),
         p2,
         b0,
     );
 
     // Ωₗₑ = 4.523602 - 9.2422029 × 10⁻⁴ d₁₉₀₀ rem 2π
     let lunar_right_ascension_epsilon =
-        (4.5236020 - 9.2422029e-4 * d1900) % (2.0 * std::f64::consts::PI);
+        (4.5236020 - 9.2422029e-4 * d1900) % (2.0 * core::f64::consts::PI);
 
     // cos Iₗ = 0.91375164 - 0.03568096 Ωₗₑ
     let lunar_inclination_cosine = 0.91375164 - 0.03568096 * lunar_right_ascension_epsilon.cos();
@@ -314,7 +320,7 @@ pub(crate) fn constants(
         LUNAR_PERTURBATION_COEFFICIENT,
         LUNAR_MEAN_MOTION,
         // Mₗ₀ = (-1.1151842 + 0.228027132 d₁₉₀₀) rem 2π
-        (-1.1151842 + 0.228027132 * d1900) % (2.0 * std::f64::consts::PI),
+        (-1.1151842 + 0.228027132 * d1900) % (2.0 * core::f64::consts::PI),
         p2,
         b0,
     );
@@ -352,7 +358,7 @@ pub(crate) fn constants(
                             + orbit_0.right_ascension
                             + orbit_0.argument_of_perigee
                             - sidereal_time_0)
-                            % (2.0 * std::f64::consts::PI),
+                            % (2.0 * core::f64::consts::PI),
 
                         // λ̇₀ = p₁₅ + (k₁₄ + p₁₄) − θ̇ + (Ṁₛ + Ṁₗ) + (ω̇ₛ + ω̇ₗ) + (Ω̇ₛ + Ω̇ₗ) - n₀"
                         lambda_dot_0: p15 + (k14 + p14) - SIDEREAL_SPEED
@@ -407,7 +413,7 @@ pub(crate) fn constants(
                             + orbit_0.right_ascension
                             - sidereal_time_0
                             - sidereal_time_0)
-                            % (2.0 * std::f64::consts::PI),
+                            % (2.0 * core::f64::consts::PI),
 
                         // λ̇₀ = p₁₅ + (Ṁₛ + Ṁₗ) + 2 (p₁₄ + (Ω̇ₛ + Ω̇ₗ) - θ̇) - n₀"
                         lambda_dot_0: p15
@@ -629,7 +635,7 @@ pub(crate) fn constants(
     }
 }
 
-impl<'a> propagator::Constants<'a> {
+impl propagator::Constants {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn deep_space_orbital_elements(
         &self,
@@ -664,7 +670,7 @@ impl<'a> propagator::Constants<'a> {
                 ..
             } => match state {
                 Some(state) => state.integrate(
-                    self.geopotential,
+                    &self.geopotential,
                     self.orbit_0.argument_of_perigee,
                     *lambda_dot_0,
                     resonance,
@@ -720,14 +726,14 @@ impl<'a> propagator::Constants<'a> {
             // Ω = │ p₃₀ + 2π if p₃₀ + π < p₂₂ rem 2π
             //     │ p₃₀ - 2π if p₃₀ - π > p₂₂ rem 2π
             //     │ p₃₀      otherwise
-            let right_ascension = if p30 < p22 % (2.0 * std::f64::consts::PI) - std::f64::consts::PI
-            {
-                p30 + (2.0 * std::f64::consts::PI)
-            } else if p30 > p22 % (2.0 * std::f64::consts::PI) + std::f64::consts::PI {
-                p30 - (2.0 * std::f64::consts::PI)
-            } else {
-                p30
-            };
+            let right_ascension =
+                if p30 < p22 % (2.0 * core::f64::consts::PI) - core::f64::consts::PI {
+                    p30 + (2.0 * core::f64::consts::PI)
+                } else if p30 > p22 % (2.0 * core::f64::consts::PI) + core::f64::consts::PI {
+                    p30 - (2.0 * core::f64::consts::PI)
+                } else {
+                    p30
+                };
             (
                 right_ascension,
                 // ω = │ p₂₃ + (pₛ₄ + pₗ₄) + cos I ((p₂₂ rem 2π) - Ω)
@@ -735,12 +741,21 @@ impl<'a> propagator::Constants<'a> {
                 // ω = │ p₂₃ + (pₛ₄ + pₗ₄) + cos I ((p₂₂ rem 2π) - Ω)
                 //     │ - (δIₛ + δIₗ) (p₂₂ rem 2π) sin I             otherwise
                 p23 + (ps4 + pl4)
-                    + inclination.cos() * (p22 % (2.0 * std::f64::consts::PI) - right_ascension)
+                    + inclination.cos() * (p22 % (2.0 * core::f64::consts::PI) - right_ascension)
                     - (solar_delta_inclination + lunar_delta_inclination)
                         * if afspc_compatibility_mode {
-                            p22.rem_euclid(2.0 * std::f64::consts::PI)
+                            p22.rem_euclid({
+                                #[cfg(feature = "std")]
+                                {
+                                    2.0 * core::f64::consts::PI
+                                }
+                                #[cfg(not(feature = "std"))]
+                                {
+                                    &(2.0 * core::f64::consts::PI)
+                                }
+                            })
                         } else {
-                            p22 % (2.0 * std::f64::consts::PI)
+                            p22 % (2.0 * core::f64::consts::PI)
                         }
                         * inclination.sin(),
             )
@@ -749,16 +764,17 @@ impl<'a> propagator::Constants<'a> {
         // p₃₁ = e₀ + ė t - C₄ t
         let p31 = self.orbit_0.eccentricity + eccentricity_dot * t - self.c4 * t;
         if !(-0.001..1.0).contains(&p31) {
-            Err(gp::Error::new("diverging eccentricity".to_owned()))
+            Err(gp::Error::OutOfRangeEccentricity {
+                eccentricity: p31,
+                t,
+            })
         } else {
             // e = │ 10⁻⁶ + (δeₛ + δeₗ) if p₃₁ < 10⁻⁶
             //     │ p₃₁ + (δeₛ + δeₗ)  otherwise
             let eccentricity =
                 (p31).max(1.0e-6) + (solar_delta_eccentricity + lunar_delta_eccentricity);
             if !(0.0..=1.0).contains(&eccentricity) {
-                Err(gp::Error::new(
-                    "diverging perturbed eccentricity".to_owned(),
-                ))
+                Err(gp::Error::OutOfRangePerturbedEccentricity { eccentricity, t })
             } else {
                 // a = p₂₈ (1 - C₁ t)²
                 let a = p28 * (1.0 - self.c1 * t).powi(2);

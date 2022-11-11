@@ -1,8 +1,12 @@
-use serde::{Deserialize, Serialize};
+#[cfg(not(feature = "std"))]
+use num_traits::Float;
+
+#[cfg(not(feature = "std"))]
+use num_traits::Euclid;
 
 /// Model of the Earth radius and gravitational field
-#[derive(Serialize, Deserialize)]
-#[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[derive(Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Geopotential {
     /// Equatorial radius of the earth in km
     // aₑ
@@ -64,9 +68,18 @@ pub fn iau_epoch_to_sidereal_time(epoch: f64) -> f64 {
         + 0.093104 * c2000.powi(2)
         + (876600.0 * 3600.0 + 8640184.812866) * c2000
         + 67310.54841)
-        * (std::f64::consts::PI / 180.0)
+        * (core::f64::consts::PI / 180.0)
         / 240.0)
-        .rem_euclid(2.0 * std::f64::consts::PI)
+        .rem_euclid({
+            #[cfg(feature = "std")]
+            {
+                2.0 * core::f64::consts::PI
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                &(2.0 * core::f64::consts::PI)
+            }
+        })
 }
 
 /// Converts an epoch to sidereal time using the AFSPC expression
@@ -86,8 +99,17 @@ pub fn afspc_epoch_to_sidereal_time(epoch: f64) -> f64 {
     #[allow(clippy::excessive_precision)]
     (1.7321343856509374
         + 1.72027916940703639e-2 * (d1970 + 1.0e-8).floor()
-        + (1.72027916940703639e-2 + 2.0 * std::f64::consts::PI)
+        + (1.72027916940703639e-2 + 2.0 * core::f64::consts::PI)
             * (d1970 - (d1970 + 1.0e-8).floor())
         + d1970.powi(2) * 5.07551419432269442e-15)
-        .rem_euclid(2.0 * std::f64::consts::PI)
+        .rem_euclid({
+            #[cfg(feature = "std")]
+            {
+                2.0 * core::f64::consts::PI
+            }
+            #[cfg(not(feature = "std"))]
+            {
+                &(2.0 * core::f64::consts::PI)
+            }
+        })
 }
