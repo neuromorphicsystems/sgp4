@@ -124,7 +124,7 @@ pub enum Error {
 pub type Result<T> = core::result::Result<T, Error>;
 
 #[cfg(feature = "alloc")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 impl From<Error> for anyhow::Error {
     fn from(error: Error) -> Self {
         anyhow::Error::msg(match error {
@@ -375,7 +375,7 @@ pub struct Elements {
         serde(rename = "OBJECT_NAME")
     )]
     #[cfg(feature = "alloc")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub object_name: Option<alloc::string::String>,
 
     /// The satellite's international designator
@@ -384,7 +384,7 @@ pub struct Elements {
     /// a letter code representing the sequential identifier of a piece in a launch.
     #[cfg_attr(all(feature = "alloc", feature = "serde"), serde(rename = "OBJECT_ID"))]
     #[cfg(feature = "alloc")]
-    #[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+    #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
     pub international_designator: Option<alloc::string::String>,
 
     /// The catalog number USSPACECOM has designated for this object
@@ -900,7 +900,7 @@ impl Elements {
 ///
 /// * `tles` - A string containing multiple lines
 #[cfg(feature = "alloc")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub fn parse_2les(tles: &str) -> Result<alloc::vec::Vec<Elements>> {
     let mut line_buffer = "";
     let mut first = true;
@@ -929,7 +929,7 @@ pub fn parse_2les(tles: &str) -> Result<alloc::vec::Vec<Elements>> {
 ///
 /// * `tles` - A string containing multiple lines
 #[cfg(feature = "alloc")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub fn parse_3les(tles: &str) -> Result<alloc::vec::Vec<Elements>> {
     let mut lines_buffer = ["", ""];
     let mut index = 0;

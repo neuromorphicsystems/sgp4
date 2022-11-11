@@ -1,6 +1,6 @@
 [package]
 name = "sgp4"
-version = "0.8.0"
+version = "0.8.1"
 authors = [
     "International Centre for Neuromorphic Systems",
     "Alexandre Marcireau",
@@ -27,17 +27,21 @@ serde = {version = "1.0", default-features = false, optional = true}
 serde_json = {version = "1.0", default-features = false, optional = true}
 num-traits = {version = "0.2", default-features = false, optional = true}
 
+[dev-dependencies]
+criterion = "0.4"
+toml = "0.5"
+ureq = {version = "2.5", features = ["json"]}
+
+[package.metadata.docs.rs]
+features = ["alloc", "serde", "std", "libm"]
+rustdoc-args = ["--cfg", "docsrs"]
+
 [features]
 default = ["alloc", "serde", "std"]
 alloc = ["anyhow"]
 serde = ["alloc", "chrono/serde", "serde/alloc", "serde/derive", "serde_json/alloc"]
 std = ["alloc", "anyhow/std", "chrono/std", "serde?/std", "serde_json?/std"]
 libm = ["num-traits/libm"]
-
-[dev-dependencies]
-criterion = "0.4"
-toml = "0.5"
-ureq = {version = "2.5", features = ["json"]}
 
 [[bench]]
 name = "propagate"

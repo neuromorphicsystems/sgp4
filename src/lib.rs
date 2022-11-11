@@ -33,6 +33,8 @@
 //! More examples can be found in the repository [https://github.com/neuromorphicsystems/sgp4/tree/master/examples](https://github.com/neuromorphicsystems/sgp4/tree/master/examples).
 //!
 
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(not(any(feature = "std", feature = "libm")))]
@@ -68,11 +70,11 @@ pub use propagator::Orbit;
 pub use propagator::Prediction;
 
 #[cfg(feature = "alloc")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub use gp::parse_2les;
 
 #[cfg(feature = "alloc")]
-#[cfg_attr(doc_cfg, doc(cfg(feature = "alloc")))]
+#[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
 pub use gp::parse_3les;
 
 impl Orbit {
