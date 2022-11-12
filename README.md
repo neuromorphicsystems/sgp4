@@ -7,7 +7,7 @@ The SGP4 algorithm, ported to Rust from the reference Celestrak implementation [
 
 The code was entirely refactored to leverage Rust's algebraic data types and highlight the relationship between the implementation and the reference mathematical equations [[2]](#2).
 
-The numerical predictions are almost identical to those of the Celestrak implementation. The observed differences (less than 2 × 10⁻⁷ km for the position and 10⁻⁹ km.s⁻¹ for the velocity three and a half years after epoch) are well below the accuracy of the algorithm.
+The numerical predictions are almost identical to Celestrak's. The observed differences (less than 2 × 10⁻⁷ km for the position and 10⁻⁹ km.s⁻¹ for the velocity three and a half years after the epoch) are well below the accuracy of the algorithm.
 
 We drew inspiration from the incomplete https://github.com/natronics/rust-sgp4 to write mathematical expressions using UTF-8 characters.
 
