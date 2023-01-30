@@ -1,8 +1,3 @@
-```toml
-[dependencies]
-sgp4 = "0.8"
-```
-
 The SGP4 algorithm, ported to Rust from the reference Celestrak implementation [[1]](#1).
 
 The code was entirely refactored to leverage Rust's algebraic data types and highlight the relationship between the implementation and the reference mathematical equations [[2]](#2).
