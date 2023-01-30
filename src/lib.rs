@@ -34,7 +34,6 @@
 //!
 
 #![cfg_attr(docsrs, feature(doc_cfg))]
-
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(not(any(feature = "std", feature = "libm")))]
@@ -59,6 +58,8 @@ pub use deep_space::ResonanceState;
 pub use gp::Classification;
 pub use gp::Elements;
 pub use gp::Error;
+pub use gp::ErrorTleLine;
+pub use gp::ErrorTleWhat;
 pub use gp::Result;
 pub use model::afspc_epoch_to_sidereal_time;
 pub use model::iau_epoch_to_sidereal_time;
