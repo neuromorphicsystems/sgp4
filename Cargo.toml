@@ -29,8 +29,8 @@ num-traits = {version = "0.2", default-features = false, optional = true}
 
 [dev-dependencies]
 criterion = "0.4"
-toml = "0.5"
-ureq = {version = "2.5", features = ["json"]}
+toml = "0.7"
+ureq = {version = "2.6", features = ["json"]}
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]

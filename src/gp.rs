@@ -48,6 +48,12 @@ pub enum ErrorTleWhat {
 
     /// Unknown classification code
     UnknownClassification,
+
+    /// Date generation failed
+    FromYoOptFailed,
+
+    /// Date generation failed
+    FromNumSecondsFromMidnightFailed,
 }
 
 /// Input line where a parse error was found
@@ -129,22 +135,17 @@ impl From<Error> for anyhow::Error {
     fn from(error: Error) -> Self {
         anyhow::Error::msg(match error {
             Error::OutOfRangeEpochEccentricity{eccentricity} => format!(
-                "the eccentricity ({}) is outside the range [0, 1[ at epoch",
-                eccentricity
+                "the eccentricity ({eccentricity}) is outside the range [0, 1[ at epoch",
             ),
             Error::OutOfRangeEccentricity{eccentricity, t} => format!(
-                "the eccentricity without third-body perturbations ({}) is outside the range [0, 1[ {} min after epoch",
-                eccentricity,
-                t,
+                "the eccentricity without third-body perturbations ({eccentricity}) is outside the range [0, 1[ {t} min after epoch",
             ),
             Error::OutOfRangePerturbedEccentricity{eccentricity, t} => format!(
-                "the eccentricity with third-body perturbations ({}) is outside the range [0, 1[ {} min after epoch",
-                eccentricity,
-                t,
+                "the eccentricity with third-body perturbations ({eccentricity}) is outside the range [0, 1[ {t} min after epoch",
             ),
             Error::NegativeBrouwerMeanMotion => "the Brouwer mean motion is negative".to_owned(),
             Error::NegativeKozaiMeanMotion => "the Kozai mean motion is negative".to_owned(),
-            Error::NegativeSemiLatusRectum {t} => format!("the semi-latus rectum is negative {} min after epoch", t),
+            Error::NegativeSemiLatusRectum {t} => format!("the semi-latus rectum is negative {t} min after epoch"),
             Error::Tle {what, line, start, end} => format!("{} ({}..{}): {}",
                 match line {
                     ErrorTleLine::Line1 => "TLE line 1",
@@ -165,6 +166,8 @@ impl From<Error> for anyhow::Error {
                     ErrorTleWhat::FloatWithAssumedDecimalPointTooLong => "the float with assumed decimal point is too long",
                     ErrorTleWhat::NoradIdMismatch => "the NORAD ids are different",
                     ErrorTleWhat::UnknownClassification => "unknown classification",
+                    ErrorTleWhat::FromYoOptFailed => "date generation failed",
+                    ErrorTleWhat::FromNumSecondsFromMidnightFailed => "date generation failed",
                 }
             )
         })
@@ -706,13 +709,23 @@ impl Elements {
                     },
                     day as u32,
                 )
-                .expect("Failed to make a NaiveDate")
+                .ok_or(Error::Tle {
+                    what: ErrorTleWhat::FromYoOptFailed,
+                    line: ErrorTleLine::Line1,
+                    start: 18,
+                    end: 20,
+                })?
                 .and_time(
                     chrono::NaiveTime::from_num_seconds_from_midnight_opt(
                         seconds as u32,
                         (seconds.fract() * 1e9).round() as u32,
                     )
-                    .expect("Failed to make NaiveDate from midnight opt"),
+                    .ok_or(Error::Tle {
+                        what: ErrorTleWhat::FromNumSecondsFromMidnightFailed,
+                        line: ErrorTleLine::Line1,
+                        start: 20,
+                        end: 32,
+                    })?,
                 )
             },
             mean_motion_dot: line1[33..43]
@@ -860,8 +873,8 @@ impl Elements {
         // y₂₀₀₀ = (367 yᵤ - ⌊7 (yᵤ + ⌊(mᵤ + 9) / 12⌋) / 4⌋ + 275 ⌊mᵤ / 9⌋ + dᵤ - 730531) / 365.25
         //         + (3600 hᵤ + 60 minᵤ + sᵤ - 43200) / (24 × 60 × 60 × 365.25)
         //         + nsᵤ / (24 × 60 × 60 × 365.25 × 10⁹)
-        (367 * self.datetime.year() as i32
-            - (7 * (self.datetime.year() as i32 + (self.datetime.month() as i32 + 9) / 12)) / 4
+        (367 * self.datetime.year()
+            - (7 * (self.datetime.year() + (self.datetime.month() as i32 + 9) / 12)) / 4
             + 275 * self.datetime.month() as i32 / 9
             + self.datetime.day() as i32
             - 730531) as f64
@@ -1008,8 +1021,8 @@ mod tests {
         );
         assert_eq!(
             elements.datetime,
-            chrono::NaiveDate::from_yo(2020, 194).and_time(
-                chrono::NaiveTime::from_num_seconds_from_midnight(4747, 402656000)
+            chrono::NaiveDate::from_yo_opt(2020, 194).unwrap().and_time(
+                chrono::NaiveTime::from_num_seconds_from_midnight_opt(4747, 402656000).unwrap()
             )
         );
         assert_eq_f64(elements.epoch(), 20.527186712635181);
@@ -1092,8 +1105,8 @@ mod tests {
         );
         assert_eq!(
             elements.datetime,
-            chrono::NaiveDate::from_yo(2020, 348).and_time(
-                chrono::NaiveTime::from_num_seconds_from_midnight(59764, 502592000)
+            chrono::NaiveDate::from_yo_opt(2020, 348).unwrap().and_time(
+                chrono::NaiveTime::from_num_seconds_from_midnight_opt(59764, 502592000).unwrap()
             )
         );
         assert_eq_f64(elements.epoch(), 20.95055912054757);
@@ -1180,8 +1193,8 @@ mod tests {
         );
         assert_eq!(
             elements.datetime,
-            chrono::NaiveDate::from_yo(2008, 264).and_time(
-                chrono::NaiveTime::from_num_seconds_from_midnight(44740, 104192001)
+            chrono::NaiveDate::from_yo_opt(2008, 264).unwrap().and_time(
+                chrono::NaiveTime::from_num_seconds_from_midnight_opt(44740, 104192001).unwrap()
             )
         );
         assert_eq_f64(elements.epoch(), 8.720103559972621);
@@ -1215,8 +1228,8 @@ mod tests {
         assert!(elements.international_designator.is_none());
         assert_eq!(
             elements.datetime,
-            chrono::NaiveDate::from_yo(1980, 230).and_time(
-                chrono::NaiveTime::from_num_seconds_from_midnight(25600, 136832000)
+            chrono::NaiveDate::from_yo_opt(1980, 230).unwrap().and_time(
+                chrono::NaiveTime::from_num_seconds_from_midnight_opt(25600, 136832000).unwrap()
             )
         );
         assert_eq_f64(elements.epoch(), -19.373589875756331);
