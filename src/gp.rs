@@ -694,7 +694,7 @@ impl Elements {
                         end: 32,
                     })?;
                 let seconds = day.fract() * (24.0 * 60.0 * 60.0);
-                chrono::NaiveDate::from_yo(
+                chrono::NaiveDate::from_yo_opt(
                     match line1[18..20].parse::<u8>().map_err(|_| Error::Tle {
                         what: ErrorTleWhat::ExpectedFloat,
                         line: ErrorTleLine::Line1,
@@ -706,10 +706,14 @@ impl Elements {
                     },
                     day as u32,
                 )
-                .and_time(chrono::NaiveTime::from_num_seconds_from_midnight(
-                    seconds as u32,
-                    (seconds.fract() * 1e9).round() as u32,
-                ))
+                .expect("Failed to make a NaiveDate")
+                .and_time(
+                    chrono::NaiveTime::from_num_seconds_from_midnight_opt(
+                        seconds as u32,
+                        (seconds.fract() * 1e9).round() as u32,
+                    )
+                    .expect("Failed to make NaiveDate from midnight opt"),
+                )
             },
             mean_motion_dot: line1[33..43]
                 .trim_ascii_start_polyfill()
