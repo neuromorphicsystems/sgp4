@@ -1,3 +1,6 @@
+![crates.io](https://img.shields.io/crates/v/sgp4.svg)
+![mit-badge](https://img.shields.io/badge/license-MIT-blue.svg)
+
 The SGP4 algorithm, ported to Rust from the reference Celestrak implementation [[1]](#1).
 
 The code was entirely refactored to leverage Rust's algebraic data types and highlight the relationship between the implementation and the reference mathematical equations [[2]](#2).

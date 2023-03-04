@@ -110,6 +110,15 @@ pub enum Error {
         t: f64,
     },
 
+    /// Overflow in datetime delta calculation
+    DatetimeDeltaOverflow {
+        /// t₀ in (t₁ - t₀)
+        from: chrono::NaiveDateTime,
+
+        /// t₁ in (t₁ - t₀)
+        to: chrono::NaiveDateTime,
+    },
+
     /// TLE parse error
     Tle {
         /// TLE error type
@@ -146,6 +155,7 @@ impl From<Error> for anyhow::Error {
             Error::NegativeBrouwerMeanMotion => "the Brouwer mean motion is negative".to_owned(),
             Error::NegativeKozaiMeanMotion => "the Kozai mean motion is negative".to_owned(),
             Error::NegativeSemiLatusRectum {t} => format!("the semi-latus rectum is negative {t} min after epoch"),
+            Error::DatetimeDeltaOverflow {from, to} => format!("overflow in datetime delta calculation between {from} and {to}"),
             Error::Tle {what, line, start, end} => format!("{} ({}..{}): {}",
                 match line {
                     ErrorTleLine::Line1 => "TLE line 1",
@@ -906,6 +916,19 @@ impl Elements {
             - 2451545.0)
             / 365.25
     }
+
+    /// Returns the time difference in minutes between the given datetime and the elements' epoch
+    ///
+    /// This method does not take leap seconds into account
+    pub fn minutes_since_epoch(&self, datetime: chrono::NaiveDateTime) -> Result<f64> {
+        (datetime - self.datetime)
+            .num_nanoseconds()
+            .ok_or_else(|| Error::DatetimeDeltaOverflow {
+                from: self.datetime,
+                to: datetime,
+            })
+            .map(|naanoseconds| naanoseconds as f64 / 60e9)
+    }
 }
 
 /// Parses a multi-line TL/2LE string into a list of `Elements`
@@ -921,12 +944,12 @@ impl Elements {
 pub fn parse_2les(tles: &str) -> Result<alloc::vec::Vec<Elements>> {
     let mut line_buffer = "";
     let mut first = true;
-    let mut elements_group = alloc::vec::Vec::new();
+    let mut elements_vec = alloc::vec::Vec::new();
     for line in tles.lines() {
         if first {
             line_buffer = line;
         } else {
-            elements_group.push(Elements::from_tle(
+            elements_vec.push(Elements::from_tle(
                 None,
                 line_buffer.as_bytes(),
                 line.as_bytes(),
@@ -934,7 +957,7 @@ pub fn parse_2les(tles: &str) -> Result<alloc::vec::Vec<Elements>> {
         }
         first = !first;
     }
-    Ok(elements_group)
+    Ok(elements_vec)
 }
 
 /// Parses a multi-line TL/3LE string into a list of `Elements`
@@ -950,7 +973,7 @@ pub fn parse_2les(tles: &str) -> Result<alloc::vec::Vec<Elements>> {
 pub fn parse_3les(tles: &str) -> Result<alloc::vec::Vec<Elements>> {
     let mut lines_buffer = ["", ""];
     let mut index = 0;
-    let mut elements_group = alloc::vec::Vec::new();
+    let mut elements_vec = alloc::vec::Vec::new();
     for line in tles.lines() {
         match index {
             0 | 1 => {
@@ -958,7 +981,7 @@ pub fn parse_3les(tles: &str) -> Result<alloc::vec::Vec<Elements>> {
                 index += 1;
             }
             _ => {
-                elements_group.push(Elements::from_tle(
+                elements_vec.push(Elements::from_tle(
                     Some(lines_buffer[0].to_owned()),
                     lines_buffer[1].as_bytes(),
                     line.as_bytes(),
@@ -967,7 +990,7 @@ pub fn parse_3les(tles: &str) -> Result<alloc::vec::Vec<Elements>> {
             }
         }
     }
-    Ok(elements_group)
+    Ok(elements_vec)
 }
 
 #[cfg(test)]
@@ -1128,7 +1151,7 @@ mod tests {
 
     #[test]
     fn test_from_celestrak_omms() -> anyhow::Result<()> {
-        let elements_group: Vec<Elements> = serde_json::from_str(
+        let elements_vec: Vec<Elements> = serde_json::from_str(
             r#"[{
                 "OBJECT_NAME": "ISS (ZARYA)",
                 "OBJECT_ID": "1998-067A",
@@ -1167,7 +1190,7 @@ mod tests {
                 "MEAN_MOTION_DDOT": 0
             }]"#,
         )?;
-        assert_eq!(elements_group.len(), 2);
+        assert_eq!(elements_vec.len(), 2);
         Ok(())
     }
 
@@ -1254,19 +1277,19 @@ mod tests {
 
     #[test]
     fn test_parse_2les() -> Result<()> {
-        let elements_group = parse_2les(
+        let elements_vec = parse_2les(
             "1 25544U 98067A   20194.88612269 -.00002218  00000-0 -31515-4 0  9992\n\
              2 25544  51.6461 221.2784 0001413  89.1723 280.4612 15.49507896236008\n\
              1 42982U 98067NE  20194.06866787  .00008489  00000-0  72204-4 0  9997\n\
              2 42982  51.6338 155.6245 0002758 166.8841 193.2228 15.70564504154944\n",
         )?;
-        assert_eq!(elements_group.len(), 2);
+        assert_eq!(elements_vec.len(), 2);
         Ok(())
     }
 
     #[test]
     fn test_parse_3les() -> Result<()> {
-        let elements_group = parse_3les(
+        let elements_vec = parse_3les(
             "ISS (ZARYA)\n\
              1 25544U 98067A   20194.88612269 -.00002218  00000-0 -31515-4 0  9992\n\
              2 25544  51.6461 221.2784 0001413  89.1723 280.4612 15.49507896236008\n\
@@ -1274,7 +1297,7 @@ mod tests {
              1 42982U 98067NE  20194.06866787  .00008489  00000-0  72204-4 0  9997\n\
              2 42982  51.6338 155.6245 0002758 166.8841 193.2228 15.70564504154944\n",
         )?;
-        assert_eq!(elements_group.len(), 2);
+        assert_eq!(elements_vec.len(), 2);
         Ok(())
     }
 }
