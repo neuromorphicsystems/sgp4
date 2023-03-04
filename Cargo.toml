@@ -1,6 +1,6 @@
 [package]
 name = "sgp4"
-version = "1.1.0"
+version = "1.2.0"
 authors = [
     "International Centre for Neuromorphic Systems",
     "Alexandre Marcireau",

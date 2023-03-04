@@ -55,6 +55,8 @@ mod near_earth;
 mod propagator;
 mod third_body;
 pub use deep_space::ResonanceState;
+pub use gp::epoch;
+pub use gp::epoch_afspc_compatibility_mode;
 pub use gp::Classification;
 pub use gp::Elements;
 pub use gp::Error;

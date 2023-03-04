@@ -548,6 +548,46 @@ where
     }
 }
 
+/// Returns the number of years since UTC 1 January 2000 12h00 (J2000)
+///
+/// This is the recommended method to calculate the epoch
+pub fn epoch(datetime: &chrono::NaiveDateTime) -> f64 {
+    // y₂₀₀₀ = (367 yᵤ - ⌊7 (yᵤ + ⌊(mᵤ + 9) / 12⌋) / 4⌋ + 275 ⌊mᵤ / 9⌋ + dᵤ - 730531) / 365.25
+    //         + (3600 hᵤ + 60 minᵤ + sᵤ - 43200) / (24 × 60 × 60 × 365.25)
+    //         + nsᵤ / (24 × 60 × 60 × 365.25 × 10⁹)
+    (367 * datetime.year() - (7 * (datetime.year() + (datetime.month() as i32 + 9) / 12)) / 4
+        + 275 * datetime.month() as i32 / 9
+        + datetime.day() as i32
+        - 730531) as f64
+        / 365.25
+        + (datetime.num_seconds_from_midnight() as i32 - 43200) as f64
+            / (24.0 * 60.0 * 60.0 * 365.25)
+        + (datetime.nanosecond() as f64) / (24.0 * 60.0 * 60.0 * 1e9 * 365.25)
+}
+
+/// Returns the number of years since UTC 1 January 2000 12h00 (J2000) using the AFSPC expression
+///
+/// This function should be used if compatibility with the AFSPC implementation is needed
+pub fn epoch_afspc_compatibility_mode(datetime: &chrono::NaiveDateTime) -> f64 {
+    // y₂₀₀₀ = (367 yᵤ - ⌊7 (yᵤ + ⌊(mᵤ + 9) / 12⌋) / 4⌋ + 275 ⌊mᵤ / 9⌋ + dᵤ
+    //         + 1721013.5
+    //         + (((nsᵤ / 10⁹ + sᵤ) / 60 + minᵤ) / 60 + hᵤ) / 24
+    //         - 2451545)
+    //         / 365.25
+    ((367 * datetime.year() as u32
+        - (7 * (datetime.year() as u32 + (datetime.month() + 9) / 12)) / 4
+        + 275 * datetime.month() / 9
+        + datetime.day()) as f64
+        + 1721013.5
+        + (((datetime.nanosecond() as f64 / 1e9 + datetime.second() as f64) / 60.0
+            + datetime.minute() as f64)
+            / 60.0
+            + datetime.hour() as f64)
+            / 24.0
+        - 2451545.0)
+        / 365.25
+}
+
 impl Elements {
     fn from_lines(line1: &[u8], line2: &[u8]) -> Result<Elements> {
         if line1.len() != 69 {
@@ -879,41 +919,14 @@ impl Elements {
     ///
     /// This is the recommended method to calculate the epoch
     pub fn epoch(&self) -> f64 {
-        // y₂₀₀₀ = (367 yᵤ - ⌊7 (yᵤ + ⌊(mᵤ + 9) / 12⌋) / 4⌋ + 275 ⌊mᵤ / 9⌋ + dᵤ - 730531) / 365.25
-        //         + (3600 hᵤ + 60 minᵤ + sᵤ - 43200) / (24 × 60 × 60 × 365.25)
-        //         + nsᵤ / (24 × 60 × 60 × 365.25 × 10⁹)
-        (367 * self.datetime.year()
-            - (7 * (self.datetime.year() + (self.datetime.month() as i32 + 9) / 12)) / 4
-            + 275 * self.datetime.month() as i32 / 9
-            + self.datetime.day() as i32
-            - 730531) as f64
-            / 365.25
-            + (self.datetime.num_seconds_from_midnight() as i32 - 43200) as f64
-                / (24.0 * 60.0 * 60.0 * 365.25)
-            + (self.datetime.nanosecond() as f64) / (24.0 * 60.0 * 60.0 * 1e9 * 365.25)
+        epoch(&self.datetime)
     }
 
     /// Returns the number of years since UTC 1 January 2000 12h00 (J2000) using the AFSPC expression
     ///
     /// This function should be used if compatibility with the AFSPC implementation is needed
     pub fn epoch_afspc_compatibility_mode(&self) -> f64 {
-        // y₂₀₀₀ = (367 yᵤ - ⌊7 (yᵤ + ⌊(mᵤ + 9) / 12⌋) / 4⌋ + 275 ⌊mᵤ / 9⌋ + dᵤ
-        //         + 1721013.5
-        //         + (((nsᵤ / 10⁹ + sᵤ) / 60 + minᵤ) / 60 + hᵤ) / 24
-        //         - 2451545)
-        //         / 365.25
-        ((367 * self.datetime.year() as u32
-            - (7 * (self.datetime.year() as u32 + (self.datetime.month() + 9) / 12)) / 4
-            + 275 * self.datetime.month() / 9
-            + self.datetime.day()) as f64
-            + 1721013.5
-            + (((self.datetime.nanosecond() as f64 / 1e9 + self.datetime.second() as f64) / 60.0
-                + self.datetime.minute() as f64)
-                / 60.0
-                + self.datetime.hour() as f64)
-                / 24.0
-            - 2451545.0)
-            / 365.25
+        epoch_afspc_compatibility_mode(&self.datetime)
     }
 
     /// Returns the time difference in minutes between the given datetime and the elements' epoch
