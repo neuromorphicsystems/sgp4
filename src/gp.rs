@@ -313,7 +313,6 @@ impl DecimalPointAssumedRepresentation for [u8] {
             raw_buffer[1..trimmed.len() + 1].copy_from_slice(trimmed);
             length = trimmed.len() + 1;
         }
-        // SAFETY: parse calls dec2flt which immediately converts back to bytes.
         raw_buffer[0..length]
             .parse::<f64>()
             .map_err(|_| Error::Tle {
@@ -923,7 +922,7 @@ impl Elements {
     pub fn minutes_since_epoch(&self, datetime: chrono::NaiveDateTime) -> Result<f64> {
         (datetime - self.datetime)
             .num_nanoseconds()
-            .ok_or_else(|| Error::DatetimeDeltaOverflow {
+            .ok_or(Error::DatetimeDeltaOverflow {
                 from: self.datetime,
                 to: datetime,
             })

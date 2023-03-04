@@ -1,6 +1,7 @@
 #[cfg(not(feature = "std"))]
 use num_traits::Float;
 
+#[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) struct Perturbations {
     kx0: f64,
@@ -18,6 +19,7 @@ pub(crate) struct Perturbations {
     third_body_mean_anomaly_0: f64,
 }
 
+#[derive(Debug, Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) struct Dots {
     pub(crate) inclination: f64,
