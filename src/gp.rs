@@ -932,12 +932,12 @@ impl Elements {
     /// Returns the time difference in minutes between the given datetime and the elements' epoch
     ///
     /// This method does not take leap seconds into account
-    pub fn minutes_since_epoch(&self, datetime: chrono::NaiveDateTime) -> Result<f64> {
-        (datetime - self.datetime)
+    pub fn minutes_since_epoch(&self, datetime: &chrono::NaiveDateTime) -> Result<f64> {
+        (*datetime - self.datetime)
             .num_nanoseconds()
             .ok_or(Error::DatetimeDeltaOverflow {
                 from: self.datetime,
-                to: datetime,
+                to: *datetime,
             })
             .map(|naanoseconds| naanoseconds as f64 / 60e9)
     }
