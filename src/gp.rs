@@ -551,7 +551,7 @@ where
 /// Returns the number of years since UTC 1 January 2000 12h00 (J2000)
 ///
 /// This is the recommended method to calculate the epoch
-pub fn epoch(datetime: &chrono::NaiveDateTime) -> f64 {
+pub fn julian_years_since_j2000(datetime: &chrono::NaiveDateTime) -> f64 {
     // y₂₀₀₀ = (367 yᵤ - ⌊7 (yᵤ + ⌊(mᵤ + 9) / 12⌋) / 4⌋ + 275 ⌊mᵤ / 9⌋ + dᵤ - 730531) / 365.25
     //         + (3600 hᵤ + 60 minᵤ + sᵤ - 43200) / (24 × 60 × 60 × 365.25)
     //         + nsᵤ / (24 × 60 × 60 × 365.25 × 10⁹)
@@ -568,7 +568,7 @@ pub fn epoch(datetime: &chrono::NaiveDateTime) -> f64 {
 /// Returns the number of years since UTC 1 January 2000 12h00 (J2000) using the AFSPC expression
 ///
 /// This function should be used if compatibility with the AFSPC implementation is needed
-pub fn epoch_afspc_compatibility_mode(datetime: &chrono::NaiveDateTime) -> f64 {
+pub fn julian_years_since_j2000_afspc_compatibility_mode(datetime: &chrono::NaiveDateTime) -> f64 {
     // y₂₀₀₀ = (367 yᵤ - ⌊7 (yᵤ + ⌊(mᵤ + 9) / 12⌋) / 4⌋ + 275 ⌊mᵤ / 9⌋ + dᵤ
     //         + 1721013.5
     //         + (((nsᵤ / 10⁹ + sᵤ) / 60 + minᵤ) / 60 + hᵤ) / 24
@@ -919,14 +919,14 @@ impl Elements {
     ///
     /// This is the recommended method to calculate the epoch
     pub fn epoch(&self) -> f64 {
-        epoch(&self.datetime)
+        julian_years_since_j2000(&self.datetime)
     }
 
     /// Returns the number of years since UTC 1 January 2000 12h00 (J2000) using the AFSPC expression
     ///
     /// This function should be used if compatibility with the AFSPC implementation is needed
     pub fn epoch_afspc_compatibility_mode(&self) -> f64 {
-        epoch_afspc_compatibility_mode(&self.datetime)
+        julian_years_since_j2000_afspc_compatibility_mode(&self.datetime)
     }
 
     /// Returns the time difference in minutes between the given datetime and the elements' epoch
