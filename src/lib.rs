@@ -134,9 +134,9 @@ impl Orbit {
                 // a₁ = (kₑ / n₀)²ᐟ³
                 let a1 = (geopotential.ke / kozai_mean_motion).powf(2.0 / 3.0);
 
-                //      3      3 cos²I₀
-                // p₀ = - J₂ -----------
-                //      4    (1 − e₀²)³ᐟ²
+                //      3      3 cos²I₀ - 1
+                // p₀ = - J₂ ---------------
+                //      4       (1 − e₀²)³ᐟ²
                 let p0 = 0.75 * geopotential.j2 * (3.0 * inclination.cos().powi(2) - 1.0)
                     / (1.0 - eccentricity.powi(2)).powf(3.0 / 2.0);
 
