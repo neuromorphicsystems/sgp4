@@ -140,7 +140,7 @@ The following variables depend solely on epoch elements.
 | `Elements::datetime.hour()`       | `hᵤ`     | Hours since midnight in the range `[0, 23]`                                                                                                                                                  |
 | `Elements::datetime.minute()`     | `minᵤ`   | Minutes since the hour in the range `[0, 59]`                                                                                                                                                |
 | `Elements::datetime.second()`     | `sᵤ`     | Seconds since the minute in the range `[0, 59]`                                                                                                                                              |
-| `Elements::datetime.nanosecond()` | `nsᵤ`    | Nanoseconds since the second in the range `[0, 10⁹[`                                                                                                                                         |
+| `Elements::datetime.nanosecond()` | `nsᵤ`    | Nanoseconds since the second in the range `[0, 10⁹]`                                                                                                                                         |
 | `epoch`                           | `y₂₀₀₀`  | Julian years since UTC 1 January 2000 12h00 (J2000)                                                                                                                                          |
 | `d1900`                           | `d₁₉₀₀`  | Julian days since UTC 1 January 1900 12h00 (J1900)                                                                                                                                           |
 | `d1970`                           | `d₁₉₇₀`  | Julian days since UTC 1 January 1970 12h00 (J1970)                                                                                                                                           |
@@ -428,9 +428,9 @@ a₁ = (kₑ / n₀)²ᐟ³
 p₀ = - J₂ -----------
      4    (1 − e₀²)³ᐟ²
 
-𝛿₁ = p₂ / a₁²
+𝛿₁ = p₀ / a₁²
 
-𝛿₀ = p₂ / (a₁ (1 - ¹/₃ 𝛿₁ - 𝛿₁² - ¹³⁴/₈₁ 𝛿₁³))²
+𝛿₀ = p₀ / (a₁ (1 - ¹/₃ 𝛿₁ - 𝛿₁² - ¹³⁴/₈₁ 𝛿₁³))²
 
 n₀" = n₀ / (1 + 𝛿₀)
 
@@ -489,7 +489,7 @@ C₄ = 2 B* n₀" p₉ a₀" p₂ (
      - J₂ ξ / (a p₈) (-3 k₆ (1 - 2 e₀ η + η² (³/₂ - ¹/₂ e₀ η))
      + ³/₄ (1 - p₁²) (2 η² - e₀ η (1 + η²)) cos 2 ω₀)
 
-k₀ = - ⁷/₂ p₂ p₁₁ p₁ C₁
+k₀ =  ⁷/₂ p₂ p₁₁ p₁ C₁
 
 k₁ = ³/₂ C₁
 
