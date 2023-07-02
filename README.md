@@ -175,7 +175,7 @@ The following variables depend solely on epoch elements.
 | `eta`                             | `η`      | partial expression of multiple initialization expressions and of the argument of perigee and mean anomaly in eccentric high altitude near earth propagation                                  |
 | `p8`                              | `p₈`     | partial expression of multiple initialization expressions                                                                                                                                    |
 | `p9`                              | `p₉`     | partial expression of multiple initialization expressions                                                                                                                                    |
-| `c1`                              | `C₁`     | partial expression of multiple initializationa and propagation expressions                                                                                                                   |
+| `c1`                              | `C₁`     | partial expression of multiple initialization and propagation expressions                                                                                                                   |
 | `p10`                             | `p₁₀`    | partial expression of multiple initialization expressions                                                                                                                                    |
 | `b0`                              | `β₀`     | partial expression of multiple initialization expressions                                                                                                                                    |
 | `p11`                             | `p₁₁`    | partial expression of multiple initialization expressions                                                                                                                                    |
@@ -184,7 +184,7 @@ The following variables depend solely on epoch elements.
 | `p14`                             | `p₁₄`    | partial expression of multiple initialization expressions                                                                                                                                    |
 | `p15`                             | `p₁₅`    | partial expression of multiple initialization expressions                                                                                                                                    |
 | `k14`                             | `k₁₄`    | first order coefficient of the argument of perigee before adding solar and lunar perturbations                                                                                               |
-| `c4`                              | `C₄`     | partial expression of multiple initializationa and propagation expressions (differs from the `C₄` expression in [[2]](#2) by a factor B\*)                                                   |
+| `c4`                              | `C₄`     | partial expression of multiple initialization and propagation expressions (differs from the `C₄` expression in [[2]](#2) by a factor B\*)                                                   |
 | `right_ascension_dot`             | `Ω̇`      | first order coefficient of the right ascension                                                                                                                                               |
 | `argument_of_perigee_dot`         | `ω̇`      | first order coefficient of the argument of perigee                                                                                                                                           |
 | `mean_anomaly_dot`                | `Ṁ`      | first order coefficient of the mean anomaly                                                                                                                                                  |
@@ -199,7 +199,7 @@ The following variables depend solely on epoch elements.
 | `p16`                             | `p₁₆`    | partial expression of multiple near earth initialization expressions                                                                                                                         |
 | `d3`                              | `D₃`     | partial expression of multiple near earth initialization expressions and of the semi-major axis in near earth propagation                                                                    |
 | `d4`                              | `D₄`     | partial expression of multiple near earth initialization expressions and of the semi-major axis in near earth propagation                                                                    |
-| `c5`                              | `C₅`     | partial expression of multiple initializationa and propagation expressions (differs from the `C₅` expression in [[2]](#2) by a factor B\*)                                                   |
+| `c5`                              | `C₅`     | partial expression of multiple initialization and propagation expressions (differs from the `C₅` expression in [[2]](#2) by a factor B\*)                                                   |
 | `k7`                              | `k₇`     | sine of the mean anomaly at epoch                                                                                                                                                            |
 | `k8`                              | `k₈`     | partial expression of the mean anomaly third order coefficient in high altitude near earth propagation                                                                                       |
 | `k9`                              | `k₉`     | partial expression of the mean anomaly fourth order coefficient in high altitude near earth propagation                                                                                      |
@@ -424,13 +424,13 @@ y₂₀₀₀ = (367 yᵤₜ₁ - ⌊7 (yᵤₜ₁ + ⌊(mᵤₜ₁ + 9) / 12⌋
 ```
 a₁ = (kₑ / n₀)²ᐟ³
 
-     3      3 cos²I₀
-p₀ = - J₂ -----------
-     4    (1 − e₀²)³ᐟ²
+      3      3 cos²I₀ - 1
+ p₀ = - J₂ ---------------
+      4      (1 − e₀²)³ᐟ²
 
-𝛿₁ = p₂ / a₁²
+𝛿₁ = p₀ / a₁²
 
-𝛿₀ = p₂ / (a₁ (1 - ¹/₃ 𝛿₁ - 𝛿₁² - ¹³⁴/₈₁ 𝛿₁³))²
+𝛿₀ = p₀ / (a₁ (1 - ¹/₃ 𝛿₁ - 𝛿₁² - ¹³⁴/₈₁ 𝛿₁³))²
 
 n₀" = n₀ / (1 + 𝛿₀)
 
@@ -489,7 +489,7 @@ C₄ = 2 B* n₀" p₉ a₀" p₂ (
      - J₂ ξ / (a p₈) (-3 k₆ (1 - 2 e₀ η + η² (³/₂ - ¹/₂ e₀ η))
      + ³/₄ (1 - p₁²) (2 η² - e₀ η (1 + η²)) cos 2 ω₀)
 
-k₀ = - ⁷/₂ p₂ p₁₁ p₁ C₁
+k₀ =  ⁷/₂ p₂ p₁₁ p₁ C₁
 
 k₁ = ³/₂ C₁
 
