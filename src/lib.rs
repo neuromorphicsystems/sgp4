@@ -55,6 +55,7 @@ mod near_earth;
 mod propagator;
 mod third_body;
 mod tle;
+pub use chrono;
 pub use deep_space::ResonanceState;
 pub use gp::Error;
 pub use model::afspc_epoch_to_sidereal_time;
