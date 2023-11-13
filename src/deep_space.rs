@@ -636,7 +636,7 @@ pub(crate) fn constants(
 }
 
 impl propagator::Constants {
-    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments, clippy::type_complexity)]
     pub(crate) fn deep_space_orbital_elements(
         &self,
         eccentricity_dot: f64,
@@ -649,7 +649,7 @@ impl propagator::Constants {
         p22: f64,
         p23: f64,
         afspc_compatibility_mode: bool,
-    ) -> gp::Result<(propagator::Orbit, f64, f64, f64, f64, f64, f64)> {
+    ) -> core::result::Result<(propagator::Orbit, f64, f64, f64, f64, f64, f64), gp::Error> {
         let (p28, p29) = match resonant {
             propagator::Resonant::No { a0 } => {
                 assert!(

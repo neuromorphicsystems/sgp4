@@ -7,7 +7,8 @@ fn main() -> anyhow::Result<()> {
     let constants = sgp4::Constants::from_elements_afspc_compatibility_mode(&elements)?;
     for hours in 0..24 {
         println!("t = {} min", hours * 60);
-        let prediction = constants.propagate_afspc_compatibility_mode((hours * 60) as f64)?;
+        let prediction = constants
+            .propagate_afspc_compatibility_mode(sgp4::MinutesSinceEpoch((hours * 60) as f64))?;
         println!("    r = {:?} km", prediction.position);
         println!("    ṙ = {:?} km.s⁻¹", prediction.velocity);
     }

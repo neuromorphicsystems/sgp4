@@ -20,14 +20,16 @@ fn propagate() -> anyhow::Result<()> {
                     velocity,
                     ..
                 } => {
-                    let prediction = constants.propagate_afspc_compatibility_mode(*time)?;
+                    let prediction = constants
+                        .propagate_afspc_compatibility_mode(sgp4::MinutesSinceEpoch(*time))?;
                     for index in 0..3 {
                         assert!((position[index] - prediction.position[index]).abs() < 1.0e-6);
                         assert!((velocity[index] - prediction.velocity[index]).abs() < 1.0e-9);
                     }
                 }
                 State::Err { time, error } => {
-                    let prediction = constants.propagate_afspc_compatibility_mode(*time);
+                    let prediction = constants
+                        .propagate_afspc_compatibility_mode(sgp4::MinutesSinceEpoch(*time));
                     if let Err(prediction_error) = prediction {
                         match prediction_error {
                             sgp4::Error::OutOfRangePerturbedEccentricity { eccentricity: _, t } => {

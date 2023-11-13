@@ -159,7 +159,7 @@ pub(crate) fn constants(
 }
 
 impl propagator::Constants {
-    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments, clippy::type_complexity)]
     pub(crate) fn near_earth_orbital_elements(
         &self,
         a0: f64,
@@ -172,7 +172,7 @@ impl propagator::Constants {
         t: f64,
         p22: f64,
         p23: f64,
-    ) -> gp::Result<(propagator::Orbit, f64, f64, f64, f64, f64, f64)> {
+    ) -> core::result::Result<(propagator::Orbit, f64, f64, f64, f64, f64, f64), gp::Error> {
         // p₂₄ = M₀ + Ṁ t
         let p24 = self.orbit_0.mean_anomaly + self.mean_anomaly_dot * t;
         let (argument_of_perigee, mean_anomaly, a, p27) = match high_altitude {

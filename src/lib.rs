@@ -1,4 +1,4 @@
-//! This crate implements the SGP4 algorithm for satellite propagation.
+//! This crate implements the SGP4 algorithm for satellite propagation
 //!
 //! It also provides methods to parse Two-Line Element Set (TLE) and Orbit Mean-Elements Message (OMM) data.
 //!
@@ -22,7 +22,7 @@
 //!         let constants = sgp4::Constants::from_elements(elements)?;
 //!         for hours in &[12, 24] {
 //!             println!("    t = {} min", hours * 60);
-//!             let prediction = constants.propagate((hours * 60) as f64)?;
+//!             let prediction = constants.propagate(sgp4::MinutesSinceEpoch((hours * 60) as f64))?;
 //!             println!("        r = {:?} km", prediction.position);
 //!             println!("        ṙ = {:?} km.s⁻¹", prediction.velocity);
 //!         }
@@ -54,15 +54,9 @@ mod model;
 mod near_earth;
 mod propagator;
 mod third_body;
+mod tle;
 pub use deep_space::ResonanceState;
-pub use gp::julian_years_since_j2000;
-pub use gp::julian_years_since_j2000_afspc_compatibility_mode;
-pub use gp::Classification;
-pub use gp::Elements;
 pub use gp::Error;
-pub use gp::ErrorTleLine;
-pub use gp::ErrorTleWhat;
-pub use gp::Result;
 pub use model::afspc_epoch_to_sidereal_time;
 pub use model::iau_epoch_to_sidereal_time;
 pub use model::Geopotential;
@@ -71,14 +65,49 @@ pub use model::WGS84;
 pub use propagator::Constants;
 pub use propagator::Orbit;
 pub use propagator::Prediction;
+pub use tle::julian_years_since_j2000;
+pub use tle::julian_years_since_j2000_afspc_compatibility_mode;
+pub use tle::Classification;
+pub use tle::DatetimeToMinutesSinceEpochError;
+pub use tle::Elements;
+pub use tle::Error as TleError;
+pub use tle::ErrorLine as TleErrorLine;
+pub use tle::ErrorWhat as TleErrorWhat;
+pub use tle::MinutesSinceEpoch;
+pub use tle::MinutesSinceEpochToDatetimeError;
 
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-pub use gp::parse_2les;
+pub use tle::parse_2les;
 
 #[cfg(feature = "alloc")]
 #[cfg_attr(docsrs, doc(cfg(feature = "alloc")))]
-pub use gp::parse_3les;
+pub use tle::parse_3les;
+
+/// Represents a propagation error caused by orbital elements divergence
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum KozaiElementsError {
+    #[error("The Kozai mean motion calculated from epoch elements is negative")]
+    NegativeKozaiMeanMotion,
+
+    #[error("The Brouwer mean motion calculated from epoch elements is negative")]
+    NegativeBrouwerMeanMotion,
+}
+
+/// The orbit used to generate epoch constants has an invalid eccentricity
+#[derive(thiserror::Error, Debug, Clone)]
+#[error("The epoch eccentricity ({0}) is outside the range [0, 1[")]
+pub struct OutOfRangeEpochEccentricity(pub f64);
+
+/// Errors returned when creating epoch contants from elements
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum ElementsError {
+    #[error("{0}")]
+    KozaiElementsError(#[from] KozaiElementsError),
+
+    #[error("{0}")]
+    OutOfRangeEpochEccentricity(#[from] OutOfRangeEpochEccentricity),
+}
 
 impl Orbit {
     /// Creates a new Brouwer orbit representation from Kozai elements
@@ -100,7 +129,7 @@ impl Orbit {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> sgp4::Result<()> {
+    /// # fn main() -> anyhow::Result<()> {
     /// let elements = sgp4::Elements::from_tle(
     ///     Some("ISS (ZARYA)".to_owned()),
     ///     "1 25544U 98067A   20194.88612269 -.00002218  00000-0 -31515-4 0  9992".as_bytes(),
@@ -126,9 +155,9 @@ impl Orbit {
         argument_of_perigee: f64,
         mean_anomaly: f64,
         kozai_mean_motion: f64,
-    ) -> Result<Self> {
+    ) -> core::result::Result<Self, KozaiElementsError> {
         if kozai_mean_motion <= 0.0 {
-            Err(gp::Error::NegativeKozaiMeanMotion)
+            Err(KozaiElementsError::NegativeKozaiMeanMotion)
         } else {
             let mean_motion = {
                 // a₁ = (kₑ / n₀)²ᐟ³
@@ -154,7 +183,7 @@ impl Orbit {
                 kozai_mean_motion / (1.0 + d0)
             };
             if mean_motion <= 0.0 {
-                Err(gp::Error::NegativeBrouwerMeanMotion)
+                Err(KozaiElementsError::NegativeBrouwerMeanMotion)
             } else {
                 Ok(propagator::Orbit {
                     inclination,
@@ -187,7 +216,7 @@ impl Constants {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> sgp4::Result<()> {
+    /// # fn main() -> anyhow::Result<()> {
     /// let elements = sgp4::Elements::from_tle(
     ///     Some("ISS (ZARYA)".to_owned()),
     ///     "1 25544U 98067A   20194.88612269 -.00002218  00000-0 -31515-4 0  9992".as_bytes(),
@@ -217,11 +246,9 @@ impl Constants {
         epoch: f64,
         drag_term: f64,
         orbit_0: propagator::Orbit,
-    ) -> Result<Self> {
+    ) -> core::result::Result<Self, OutOfRangeEpochEccentricity> {
         if orbit_0.eccentricity < 0.0 || orbit_0.eccentricity >= 1.0 {
-            Err(gp::Error::OutOfRangeEpochEccentricity {
-                eccentricity: orbit_0.eccentricity,
-            })
+            Err(OutOfRangeEpochEccentricity(orbit_0.eccentricity))
         } else {
             // p₁ = cos I₀
             let p1 = orbit_0.inclination.cos();
@@ -404,7 +431,7 @@ impl Constants {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> sgp4::Result<()> {
+    /// # fn main() -> anyhow::Result<()> {
     /// let constants = sgp4::Constants::from_elements(
     ///     &sgp4::Elements::from_tle(
     ///         Some("ISS (ZARYA)".to_owned()),
@@ -415,8 +442,8 @@ impl Constants {
     /// #     Ok(())
     /// # }
     /// ```
-    pub fn from_elements(elements: &Elements) -> Result<Self> {
-        Constants::new(
+    pub fn from_elements(elements: &Elements) -> core::result::Result<Self, ElementsError> {
+        Ok(Constants::new(
             WGS84,
             iau_epoch_to_sidereal_time,
             elements.epoch(),
@@ -430,7 +457,7 @@ impl Constants {
                 elements.mean_anomaly * (core::f64::consts::PI / 180.0),
                 elements.mean_motion * (core::f64::consts::PI / 720.0),
             )?,
-        )
+        )?)
     }
 
     /// Initializes a new propagator from an `Elements` object
@@ -445,7 +472,7 @@ impl Constants {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> sgp4::Result<()> {
+    /// # fn main() -> anyhow::Result<()> {
     /// let constants = sgp4::Constants::from_elements_afspc_compatibility_mode(
     ///     &sgp4::Elements::from_tle(
     ///         Some("ISS (ZARYA)".to_owned()),
@@ -456,8 +483,10 @@ impl Constants {
     /// #     Ok(())
     /// # }
     /// ```
-    pub fn from_elements_afspc_compatibility_mode(elements: &Elements) -> Result<Self> {
-        Constants::new(
+    pub fn from_elements_afspc_compatibility_mode(
+        elements: &Elements,
+    ) -> core::result::Result<Self, ElementsError> {
+        Ok(Constants::new(
             WGS72,
             afspc_epoch_to_sidereal_time,
             elements.epoch_afspc_compatibility_mode(),
@@ -471,7 +500,7 @@ impl Constants {
                 elements.mean_anomaly * (core::f64::consts::PI / 180.0),
                 elements.mean_motion * (core::f64::consts::PI / 720.0),
             )?,
-        )
+        )?)
     }
 
     /// Returns the initial deep space resonance integrator state
@@ -520,7 +549,7 @@ impl Constants {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> sgp4::Result<()> {
+    /// # fn main() -> anyhow::Result<()> {
     /// let elements = sgp4::Elements::from_tle(
     ///     Some("MOLNIYA 1-36".to_owned()),
     ///     "1 08195U 75081A   06176.33215444  .00000099  00000-0  11873-3 0   813".as_bytes(),
@@ -531,7 +560,7 @@ impl Constants {
     /// for days in 0..7 {
     ///     println!("t = {} min", days * 60 * 24);
     ///     let prediction =
-    ///         constants.propagate_from_state((days * 60 * 24) as f64, state.as_mut(), false)?;
+    ///         constants.propagate_from_state(sgp4::MinutesSinceEpoch((days * 60 * 24) as f64), state.as_mut(), false)?;
     ///     println!("    r = {:?} km", prediction.position);
     ///     println!("    ṙ = {:?} km.s⁻¹", prediction.velocity);
     /// }
@@ -541,15 +570,16 @@ impl Constants {
     #[allow(clippy::many_single_char_names)]
     pub fn propagate_from_state(
         &self,
-        t: f64,
+        t: MinutesSinceEpoch,
         state: Option<&mut ResonanceState>,
         afspc_compatibility_mode: bool,
-    ) -> Result<Prediction> {
+    ) -> core::result::Result<Prediction, gp::Error> {
         // p₂₂ = Ω₀ + Ω̇ t + k₀ t²
-        let p22 = self.orbit_0.right_ascension + self.right_ascension_dot * t + self.k0 * t.powi(2);
+        let p22 =
+            self.orbit_0.right_ascension + self.right_ascension_dot * t.0 + self.k0 * t.0.powi(2);
 
         // p₂₃ = ω₀ + ω̇ t
-        let p23 = self.orbit_0.argument_of_perigee + self.argument_of_perigee_dot * t;
+        let p23 = self.orbit_0.argument_of_perigee + self.argument_of_perigee_dot * t.0;
         let (orbit, a, p32, p33, p34, p35, p36) = match &self.method {
             propagator::Method::NearEarth {
                 a0,
@@ -572,7 +602,7 @@ impl Constants {
                     *k5,
                     *k6,
                     high_altitude,
-                    t,
+                    t.0,
                     p22,
                     p23,
                 )
@@ -590,7 +620,7 @@ impl Constants {
                 lunar_perturbations,
                 resonant,
                 state,
-                t,
+                t.0,
                 p22,
                 p23,
                 afspc_compatibility_mode,
@@ -639,7 +669,7 @@ impl Constants {
         // pₗ = a (1 - p₃₉)
         let pl = a * (1.0 - p39);
         if pl < 0.0 {
-            Err(gp::Error::NegativeSemiLatusRectum { t })
+            Err(gp::Error::NegativeSemiLatusRectum { t: t.0 })
         } else {
             // p₄₀ = aₓₙ sin(E + ω) - aᵧₙ cos(E + ω)
             let p40 = axn * ew.sin() - ayn * ew.cos();
@@ -749,7 +779,7 @@ impl Constants {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> sgp4::Result<()> {
+    /// # fn main() -> anyhow::Result<()> {
     /// let constants = sgp4::Constants::from_elements_afspc_compatibility_mode(
     ///     &sgp4::Elements::from_tle(
     ///         Some("ISS (ZARYA)".to_owned()),
@@ -757,11 +787,11 @@ impl Constants {
     ///         "2 25544  51.6461 221.2784 0001413  89.1723 280.4612 15.49507896236008".as_bytes(),
     ///     )?,
     /// )?;
-    /// let prediction = constants.propagate(60.0 * 24.0);
+    /// let prediction = constants.propagate(sgp4::MinutesSinceEpoch(60.0 * 24.0));
     /// #     Ok(())
     /// # }
     /// ```
-    pub fn propagate(&self, t: f64) -> Result<Prediction> {
+    pub fn propagate(&self, t: MinutesSinceEpoch) -> core::result::Result<Prediction, gp::Error> {
         self.propagate_from_state(t, self.initial_state().as_mut(), false)
     }
 
@@ -778,7 +808,7 @@ impl Constants {
     /// # Example
     ///
     /// ```
-    /// # fn main() -> sgp4::Result<()> {
+    /// # fn main() -> anyhow::Result<()> {
     /// let constants = sgp4::Constants::from_elements_afspc_compatibility_mode(
     ///     &sgp4::Elements::from_tle(
     ///         Some("ISS (ZARYA)".to_owned()),
@@ -786,11 +816,14 @@ impl Constants {
     ///         "2 25544  51.6461 221.2784 0001413  89.1723 280.4612 15.49507896236008".as_bytes(),
     ///     )?,
     /// )?;
-    /// let prediction = constants.propagate_afspc_compatibility_mode(60.0 * 24.0);
+    /// let prediction = constants.propagate_afspc_compatibility_mode(sgp4::MinutesSinceEpoch(60.0 * 24.0));
     /// #     Ok(())
     /// # }
     /// ```
-    pub fn propagate_afspc_compatibility_mode(&self, t: f64) -> Result<Prediction> {
+    pub fn propagate_afspc_compatibility_mode(
+        &self,
+        t: MinutesSinceEpoch,
+    ) -> core::result::Result<Prediction, gp::Error> {
         self.propagate_from_state(t, self.initial_state().as_mut(), true)
     }
 }

@@ -7,7 +7,7 @@ fn main() -> anyhow::Result<()> {
     let constants = sgp4::Constants::from_elements(&elements)?;
     for hours in 0..24 {
         println!("t = {} min", hours * 60);
-        let prediction = constants.propagate((hours * 60) as f64)?;
+        let prediction = constants.propagate(sgp4::MinutesSinceEpoch((hours * 60) as f64))?;
         println!("    r = {:?} km", prediction.position);
         println!("    ṙ = {:?} km.s⁻¹", prediction.velocity);
     }

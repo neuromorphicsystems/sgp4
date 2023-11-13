@@ -8,8 +8,11 @@ fn main() -> anyhow::Result<()> {
     let mut state = constants.initial_state();
     for days in 0..7 {
         println!("t = {} min", days * 60 * 24);
-        let prediction =
-            constants.propagate_from_state((days * 60 * 24) as f64, state.as_mut(), false)?;
+        let prediction = constants.propagate_from_state(
+            sgp4::MinutesSinceEpoch((days * 60 * 24) as f64),
+            state.as_mut(),
+            false,
+        )?;
         println!("    r = {:?} km", prediction.position);
         println!("    ṙ = {:?} km.s⁻¹", prediction.velocity);
     }

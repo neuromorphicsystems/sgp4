@@ -20,8 +20,11 @@ pub fn criterion_benchmark(criterion: &mut Criterion) {
                 .unwrap();
                 for state in &test_case.states {
                     if let State::Ok { time, .. } = state {
-                        predictions
-                            .push(constants.propagate_afspc_compatibility_mode(*time).unwrap());
+                        predictions.push(
+                            constants
+                                .propagate_afspc_compatibility_mode(sgp4::MinutesSinceEpoch(*time))
+                                .unwrap(),
+                        );
                     }
                 }
             }
