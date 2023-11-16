@@ -86,29 +86,72 @@ pub use tle::parse_2les;
 pub use tle::parse_3les;
 
 /// Represents a propagation error caused by orbital elements divergence
-#[derive(thiserror::Error, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub enum KozaiElementsError {
-    #[error("The Kozai mean motion calculated from epoch elements is negative")]
     NegativeKozaiMeanMotion,
-
-    #[error("The Brouwer mean motion calculated from epoch elements is negative")]
     NegativeBrouwerMeanMotion,
 }
 
+impl core::fmt::Display for KozaiElementsError {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            KozaiElementsError::NegativeKozaiMeanMotion => formatter
+                .write_str("The Kozai mean motion calculated from epoch elements is negative"),
+            KozaiElementsError::NegativeBrouwerMeanMotion => formatter
+                .write_str("The Brouwer mean motion calculated from epoch elements is negative"),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for KozaiElementsError {}
+
 /// The orbit used to generate epoch constants has an invalid eccentricity
-#[derive(thiserror::Error, Debug, Clone)]
-#[error("The epoch eccentricity ({0}) is outside the range [0, 1[")]
+#[derive(Debug, Clone)]
 pub struct OutOfRangeEpochEccentricity(pub f64);
 
-/// Errors returned when creating epoch contants from elements
-#[derive(thiserror::Error, Debug, Clone)]
-pub enum ElementsError {
-    #[error("{0}")]
-    KozaiElementsError(#[from] KozaiElementsError),
-
-    #[error("{0}")]
-    OutOfRangeEpochEccentricity(#[from] OutOfRangeEpochEccentricity),
+impl core::fmt::Display for OutOfRangeEpochEccentricity {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter.write_fmt(core::format_args!(
+            "The epoch eccentricity ({}) is outside the range [0, 1[",
+            self.0
+        ))
+    }
 }
+
+#[cfg(feature = "std")]
+impl std::error::Error for OutOfRangeEpochEccentricity {}
+
+/// Errors returned when creating epoch contants from elements
+#[derive(Debug, Clone)]
+pub enum ElementsError {
+    KozaiElementsError(KozaiElementsError),
+    OutOfRangeEpochEccentricity(OutOfRangeEpochEccentricity),
+}
+
+impl core::fmt::Display for ElementsError {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            ElementsError::KozaiElementsError(error) => error.fmt(formatter),
+            ElementsError::OutOfRangeEpochEccentricity(error) => error.fmt(formatter),
+        }
+    }
+}
+
+impl From<KozaiElementsError> for ElementsError {
+    fn from(value: KozaiElementsError) -> Self {
+        Self::KozaiElementsError(value)
+    }
+}
+
+impl From<OutOfRangeEpochEccentricity> for ElementsError {
+    fn from(value: OutOfRangeEpochEccentricity) -> Self {
+        Self::OutOfRangeEpochEccentricity(value)
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for ElementsError {}
 
 impl Orbit {
     /// Creates a new Brouwer orbit representation from Kozai elements

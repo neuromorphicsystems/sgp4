@@ -13,64 +13,33 @@ use num_traits::Float;
 use serde::de::Deserialize;
 
 /// TLE error type
-#[derive(thiserror::Error, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub enum ErrorWhat {
-    #[error("Bad line checksum")]
     BadChecksum,
-
-    #[error("Bad line length")]
     BadLength,
-
-    #[error("Bad first character")]
     BadFirstCharacter,
-
-    #[error("Parsing a float field failed")]
     ExpectedFloat,
-
-    #[error("Parsing a float field failed (special TLE float representation with assumed decimal point)")]
     ExpectedFloatWithAssumedDecimalPoint,
-
-    #[error("Parsing an integer field failed")]
     ExpectedInteger,
-
-    #[error("Found a non-space character between fields")]
     ExpectedSpace,
-
-    #[error("Parsing a string field failed")]
     ExpectedString,
-
-    #[error("Tried to parse a float (special TLE float representation with assumed decimal point) with more than 16 ASCII characters")]
     FloatWithAssumedDecimalPointTooLong,
-
-    #[error("NORAD mismatch between TLE lines")]
     NoradIdMismatch,
-
-    #[error("Unknown classification code")]
     UnknownClassification,
-
-    #[error("Date generation failed due to an error in the year")]
     FromYoOptFailed,
-
-    #[error("Date generation failed due to an error in the seconds from midnight")]
     FromNumSecondsFromMidnightFailed,
 }
 
 /// Input line where a parse error was found
-#[derive(thiserror::Error, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub enum ErrorLine {
-    #[error("on TLE line 1")]
     Line1,
-
-    #[error("on TLE line 2")]
     Line2,
-
-    #[error("(TLE lines mismatch)")]
     Both,
 }
 
 /// Represents a TLE parse error
-#[derive(thiserror::Error, Debug, Clone)]
-#[error("TLE parse error: {what} {line} between characters {start} and {end}")]
+#[derive(Debug, Clone)]
 pub struct Error {
     /// TLE error type
     what: ErrorWhat,
@@ -84,6 +53,39 @@ pub struct Error {
     /// End character position of the line slice that caused the error
     end: usize,
 }
+
+impl core::fmt::Display for Error {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter.write_fmt(format_args!("TLE parse error: {} {} between characters {} and {}",
+            match self.what {
+                ErrorWhat::BadChecksum => "Bad line checksum",
+                ErrorWhat::BadLength => "Bad line length",
+                ErrorWhat::BadFirstCharacter => "Bad first character",
+                ErrorWhat::ExpectedFloat => "Parsing a float field failed",
+                ErrorWhat::ExpectedFloatWithAssumedDecimalPoint => "Parsing a float field failed (special TLE float representation with assumed decimal point)",
+                ErrorWhat::ExpectedInteger => "Parsing an integer field failed",
+                ErrorWhat::ExpectedSpace => "Found a non-space character between fields",
+                ErrorWhat::ExpectedString => "Parsing a string field failed",
+                ErrorWhat::FloatWithAssumedDecimalPointTooLong => "Tried to parse a float (special TLE float representation with assumed decimal point) with more than 16 ASCII characters",
+                ErrorWhat::NoradIdMismatch => "NORAD mismatch between TLE lines",
+                ErrorWhat::UnknownClassification => "Unknown classification code",
+                ErrorWhat::FromYoOptFailed => "Date generation failed due to an error in the year",
+                ErrorWhat::FromNumSecondsFromMidnightFailed => "Date generation failed due to an error in the seconds from midnight",
+            },
+            match self.line {
+                ErrorLine::Line1 => "on TLE line 1",
+                ErrorLine::Line2 => "on TLE line 2",
+                ErrorLine::Both => "(TLE lines mismatch)",
+            },
+            self.start,
+            self.end,
+        ))
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for Error {}
+
 trait TrimStart {
     fn trim_ascii_start_polyfill(&self) -> &[u8];
 }
@@ -496,28 +498,53 @@ pub struct MinutesSinceEpoch(pub f64);
 ///
 /// 2⁶⁴ nanoseconds correspond to about 585 years.
 /// Overflows are almost certainly caused by data corruption or code bugs.
-#[derive(thiserror::Error, Debug, Clone)]
-#[error("Nanoseconds overflow when calculating {to} - {from}")]
+#[derive(Debug, Clone)]
 pub struct DatetimeToMinutesSinceEpochError {
     from: chrono::NaiveDateTime,
     to: chrono::NaiveDateTime,
 }
 
+impl core::fmt::Display for DatetimeToMinutesSinceEpochError {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        formatter.write_fmt(format_args!(
+            "Nanoseconds overflow when calculating {} - {}",
+            self.to, self.from
+        ))
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for DatetimeToMinutesSinceEpochError {}
+
 /// Nanoseconds overflow while converting from minutes since epoch to datetime
 ///
 /// 2⁶⁴ nanoseconds correspond to about 585 years.
 /// Overflows are almost certainly caused by data corruption or code bugs.
-#[derive(thiserror::Error, Debug, Clone)]
+#[derive(Debug, Clone)]
 pub enum MinutesSinceEpochToDatetimeError {
-    #[error("Nanoseconds overflow when calculating {0} * 60e9")]
     MinutesToNanoseconds(f64),
-
-    #[error("Nanoseconds overflow when calculating {datetime} + {duration}")]
     Add {
         datetime: chrono::NaiveDateTime,
         duration: chrono::Duration,
     },
 }
+
+impl core::fmt::Display for MinutesSinceEpochToDatetimeError {
+    fn fmt(&self, formatter: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            MinutesSinceEpochToDatetimeError::MinutesToNanoseconds(nanoseconds) => formatter
+                .write_fmt(format_args!(
+                    "Nanoseconds overflow when calculating {nanoseconds} * 60e9"
+                )),
+            MinutesSinceEpochToDatetimeError::Add { datetime, duration } => formatter.write_fmt(
+                format_args!("Nanoseconds overflow when calculating {datetime} + {duration}"),
+            ),
+        }
+    }
+}
+
+#[cfg(feature = "std")]
+impl std::error::Error for MinutesSinceEpochToDatetimeError {}
 
 impl Elements {
     fn from_lines(line1: &[u8], line2: &[u8]) -> core::result::Result<Elements, Error> {

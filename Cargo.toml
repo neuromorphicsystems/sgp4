@@ -1,6 +1,6 @@
 [package]
 name = "sgp4"
-version = "2.0.0"
+version = "2.1.0"
 authors = [
     "International Centre for Neuromorphic Systems",
     "Alexandre Marcireau",
@@ -22,7 +22,6 @@ edition = "2021"
 
 [dependencies]
 anyhow = {version = "1.0", default-features = false, optional = true}
-thiserror = "1.0"
 chrono = {version = "0.4.31", default-features = false}
 serde = {version = "1.0", default-features = false, optional = true}
 serde_json = {version = "1.0", default-features = false, optional = true}
