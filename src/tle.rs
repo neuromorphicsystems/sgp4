@@ -991,6 +991,7 @@ pub fn parse_3les(tles: &str) -> core::result::Result<alloc::vec::Vec<Elements>,
 mod tests {
     use super::*;
 
+    #[cfg(feature = "serde")]
     fn assert_eq_f64(first: f64, second: f64) {
         if second == 0.0 {
             assert_eq!(first, 0.0);
@@ -1063,6 +1064,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "alloc")]
     fn test_from_space_track_omm() -> anyhow::Result<()> {
         let elements: Elements = serde_json::from_str(
             r#"{"CCSDS_OMM_VERS":"2.0",
@@ -1144,6 +1146,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "alloc")]
     fn test_from_celestrak_omms() -> anyhow::Result<()> {
         let elements_vec: Vec<Elements> = serde_json::from_str(
             r#"[{
@@ -1189,12 +1192,14 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "alloc")]
     fn test_from_tle() -> core::result::Result<(), Error> {
         let elements = Elements::from_tle(
-            Some("ISS (ZARYA)".to_owned()),
+            Some("ISS (ZARYA)".into()),
             "1 25544U 98067A   08264.51782528 -.00002182  00000-0 -11606-4 0  2927".as_bytes(),
             "2 25544  51.6416 247.4627 0006703 130.5360 325.0288 15.72125391563537".as_bytes(),
         )?;
+
         match elements.object_name.as_ref() {
             Some(object_name) => assert_eq!(object_name, "ISS (ZARYA)"),
             None => panic!(),
@@ -1270,6 +1275,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "alloc")]
     fn test_parse_2les() -> core::result::Result<(), Error> {
         let elements_vec = parse_2les(
             "1 25544U 98067A   20194.88612269 -.00002218  00000-0 -31515-4 0  9992\n\
@@ -1282,6 +1288,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "alloc")]
     fn test_parse_3les() -> core::result::Result<(), Error> {
         let elements_vec = parse_3les(
             "ISS (ZARYA)\n\
