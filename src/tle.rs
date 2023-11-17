@@ -1042,7 +1042,7 @@ mod tests {
                 chrono::NaiveTime::from_num_seconds_from_midnight_opt(4747, 402656000).unwrap()
             )
         );
-        assert_eq_f64(elements.epoch(), 20.527186712635181);
+        assert_eq_f64(elements.epoch(), 20.527_186_712_635_18);
         assert_eq_f64(
             elements.epoch_afspc_compatibility_mode(),
             20.527186712635135,
@@ -1217,7 +1217,7 @@ mod tests {
         assert_eq_f64(elements.epoch(), 8.720103559972621);
         assert_eq_f64(
             elements.epoch_afspc_compatibility_mode(),
-            8.7201035599722125,
+            8.720_103_559_972_213,
         );
         assert_eq_f64(elements.mean_motion_dot, -0.00002182);
         assert_eq_f64(elements.mean_motion_ddot, 0.0);
@@ -1249,7 +1249,7 @@ mod tests {
                 chrono::NaiveTime::from_num_seconds_from_midnight_opt(25600, 136832000).unwrap()
             )
         );
-        assert_eq_f64(elements.epoch(), -19.373589875756331);
+        assert_eq_f64(elements.epoch(), -19.373_589_875_756_33);
         assert_eq_f64(
             elements.epoch_afspc_compatibility_mode(),
             -19.373589875756632,
