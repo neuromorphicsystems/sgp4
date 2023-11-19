@@ -744,16 +744,14 @@ impl propagator::Constants {
                     + inclination.cos() * (p22 % (2.0 * core::f64::consts::PI) - right_ascension)
                     - (solar_delta_inclination + lunar_delta_inclination)
                         * if afspc_compatibility_mode {
-                            p22.rem_euclid({
-                                #[cfg(feature = "std")]
-                                {
-                                    2.0 * core::f64::consts::PI
-                                }
-                                #[cfg(not(feature = "std"))]
-                                {
-                                    &(2.0 * core::f64::consts::PI)
-                                }
-                            })
+                            #[cfg(feature = "std")]
+                            {
+                                p22.rem_euclid(2.0 * core::f64::consts::PI)
+                            }
+                            #[cfg(not(feature = "std"))]
+                            {
+                                Euclid::rem_euclid(&p22, &(2.0 * core::f64::consts::PI))
+                            }
                         } else {
                             p22 % (2.0 * core::f64::consts::PI)
                         }

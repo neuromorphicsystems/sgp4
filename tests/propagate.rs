@@ -6,12 +6,18 @@ use test_cases::*;
 fn propagate() -> anyhow::Result<()> {
     let test_cases: TestCases = toml::from_str(include_str!("../test_cases.toml")).unwrap();
     for test_case in test_cases.list.iter() {
-        let constants =
-            sgp4::Constants::from_elements_afspc_compatibility_mode(&sgp4::Elements::from_tle(
-                None,
-                test_case.line1.as_bytes(),
-                test_case.line2.as_bytes(),
-            )?)?;
+        #[cfg(feature = "alloc")]
+        let element =
+            sgp4::Elements::from_tle(None, test_case.line1.as_bytes(), test_case.line2.as_bytes())
+                .map_err(|error| anyhow::anyhow!("{error}"))?;
+
+        #[cfg(not(feature = "alloc"))]
+        let element =
+            sgp4::Elements::from_tle(test_case.line1.as_bytes(), test_case.line2.as_bytes())
+                .map_err(|error| anyhow::anyhow!("{error}"))?;
+
+        let constants = sgp4::Constants::from_elements_afspc_compatibility_mode(&element)
+            .map_err(|error| anyhow::anyhow!("{error}"))?;
         for state in &test_case.states {
             match state {
                 State::Ok {
@@ -21,7 +27,8 @@ fn propagate() -> anyhow::Result<()> {
                     ..
                 } => {
                     let prediction = constants
-                        .propagate_afspc_compatibility_mode(sgp4::MinutesSinceEpoch(*time))?;
+                        .propagate_afspc_compatibility_mode(sgp4::MinutesSinceEpoch(*time))
+                        .map_err(|error| anyhow::anyhow!("{error}"))?;
                     for index in 0..3 {
                         assert!((position[index] - prediction.position[index]).abs() < 1.0e-6);
                         assert!((velocity[index] - prediction.velocity[index]).abs() < 1.0e-9);

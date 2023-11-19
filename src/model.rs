@@ -64,22 +64,21 @@ pub fn iau_epoch_to_sidereal_time(epoch: f64) -> f64 {
 
     // θ₀ = ¹/₂₄₀ (π / 180) (- 6.2 × 10⁻⁶ c₂₀₀₀³ + 0.093104 c₂₀₀₀²
     //      + (876600 × 3600 + 8640184.812866) c₂₀₀₀ + 67310.54841) mod 2π
-    ((-6.2e-6 * c2000.powi(3)
+    let theta = (-6.2e-6 * c2000.powi(3)
         + 0.093104 * c2000.powi(2)
         + (876600.0 * 3600.0 + 8640184.812866) * c2000
         + 67310.54841)
         * (core::f64::consts::PI / 180.0)
-        / 240.0)
-        .rem_euclid({
-            #[cfg(feature = "std")]
-            {
-                2.0 * core::f64::consts::PI
-            }
-            #[cfg(not(feature = "std"))]
-            {
-                &(2.0 * core::f64::consts::PI)
-            }
-        })
+        / 240.0;
+
+    #[cfg(feature = "std")]
+    {
+        theta.rem_euclid(2.0 * core::f64::consts::PI)
+    }
+    #[cfg(not(feature = "std"))]
+    {
+        Euclid::rem_euclid(&theta, &(2.0 * core::f64::consts::PI))
+    }
 }
 
 /// Converts an epoch to sidereal time using the AFSPC expression
@@ -97,19 +96,18 @@ pub fn afspc_epoch_to_sidereal_time(epoch: f64) -> f64 {
     //      + (1.72027916940703639 × 10⁻² + 2π) (t₁₉₇₀ - ⌊t₁₉₇₀ + 10⁻⁸⌋)
     //      + 5.07551419432269442 × 10⁻¹⁵ t₁₉₇₀² mod 2π
     #[allow(clippy::excessive_precision)]
-    (1.7321343856509374
+    let theta = 1.7321343856509374
         + 1.72027916940703639e-2 * (d1970 + 1.0e-8).floor()
         + (1.72027916940703639e-2 + 2.0 * core::f64::consts::PI)
             * (d1970 - (d1970 + 1.0e-8).floor())
-        + d1970.powi(2) * 5.07551419432269442e-15)
-        .rem_euclid({
-            #[cfg(feature = "std")]
-            {
-                2.0 * core::f64::consts::PI
-            }
-            #[cfg(not(feature = "std"))]
-            {
-                &(2.0 * core::f64::consts::PI)
-            }
-        })
+        + d1970.powi(2) * 5.07551419432269442e-15;
+
+    #[cfg(feature = "std")]
+    {
+        theta.rem_euclid(2.0 * core::f64::consts::PI)
+    }
+    #[cfg(not(feature = "std"))]
+    {
+        Euclid::rem_euclid(&theta, &(2.0 * core::f64::consts::PI))
+    }
 }
