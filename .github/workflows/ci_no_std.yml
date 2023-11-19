@@ -46,4 +46,4 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --tests --no-default-features --features libm
+          args: --tests --no-default-features --features libm --features serde --features alloc

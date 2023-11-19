@@ -1023,7 +1023,8 @@ mod tests {
                 "MEAN_MOTION_DOT": 0.00289036,
                 "MEAN_MOTION_DDOT": 0
             }"#,
-        )?;
+        )
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
         match elements.object_name.as_ref() {
             Some(object_name) => assert_eq!(object_name, "ISS (ZARYA)"),
             None => panic!(),
@@ -1108,7 +1109,8 @@ mod tests {
                 "TLE_LINE1":"1 25544U 98067A   20348.69171878  .00000888  00000-0  24124-4 0  9995",
                 "TLE_LINE2":"2 25544  51.6444 180.2777 0001779 128.5985 350.1361 15.49181153259845"
             }"#,
-        )?;
+        )
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
         match elements.object_name.as_ref() {
             Some(object_name) => assert_eq!(object_name, "ISS (ZARYA)"),
             None => panic!(),
@@ -1148,7 +1150,7 @@ mod tests {
     #[test]
     #[cfg(feature = "alloc")]
     fn test_from_celestrak_omms() -> anyhow::Result<()> {
-        let elements_vec: Vec<Elements> = serde_json::from_str(
+        let elements_vec: [Elements; 2] = serde_json::from_str(
             r#"[{
                 "OBJECT_NAME": "ISS (ZARYA)",
                 "OBJECT_ID": "1998-067A",
@@ -1186,7 +1188,8 @@ mod tests {
                 "MEAN_MOTION_DOT": 8.489e-5,
                 "MEAN_MOTION_DDOT": 0
             }]"#,
-        )?;
+        )
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
         assert_eq!(elements_vec.len(), 2);
         Ok(())
     }

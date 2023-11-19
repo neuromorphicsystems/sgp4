@@ -8,7 +8,8 @@ fn propagate() -> anyhow::Result<()> {
     for test_case in test_cases.list.iter() {
         #[cfg(feature = "alloc")]
         let element =
-            sgp4::Elements::from_tle(None, test_case.line1.as_bytes(), test_case.line2.as_bytes())?;
+            sgp4::Elements::from_tle(None, test_case.line1.as_bytes(), test_case.line2.as_bytes())
+                .map_err(|error| anyhow::anyhow!("{error}"))?;
 
         #[cfg(not(feature = "alloc"))]
         let element =
