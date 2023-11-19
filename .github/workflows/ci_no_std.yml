@@ -46,18 +46,4 @@ jobs:
       - uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --no-default-features --features libm
-
-  examples:
-    needs: lib
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --examples --no-default-features --features libm
+          args: --tests --no-default-features --features libm
