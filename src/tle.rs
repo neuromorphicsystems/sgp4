@@ -704,6 +704,12 @@ impl Elements {
                         end: 32,
                     })?;
                 let seconds = day.fract() * (24.0 * 60.0 * 60.0);
+                let mut nsecs = (seconds.fract() * 1e9).round() as u32;
+                let mut seconds = seconds as u32;
+                if nsecs >= 1_000_000_000 {
+                    nsecs -= 1_000_000_000;
+                    seconds += 1;
+                }
                 chrono::NaiveDate::from_yo_opt(
                     match line1[18..20].parse::<u8>().map_err(|_| Error {
                         what: ErrorWhat::ExpectedFloat,
@@ -723,16 +729,14 @@ impl Elements {
                     end: 20,
                 })?
                 .and_time(
-                    chrono::NaiveTime::from_num_seconds_from_midnight_opt(
-                        seconds as u32,
-                        (seconds.fract() * 1e9).round() as u32,
-                    )
-                    .ok_or(Error {
-                        what: ErrorWhat::FromNumSecondsFromMidnightFailed,
-                        line: ErrorLine::Line1,
-                        start: 20,
-                        end: 32,
-                    })?,
+                    chrono::NaiveTime::from_num_seconds_from_midnight_opt(seconds, nsecs).ok_or(
+                        Error {
+                            what: ErrorWhat::FromNumSecondsFromMidnightFailed,
+                            line: ErrorLine::Line1,
+                            start: 20,
+                            end: 32,
+                        },
+                    )?,
                 )
             },
             mean_motion_dot: line1[33..43]
@@ -1274,6 +1278,24 @@ mod tests {
         assert_eq_f64(elements.mean_anomaly, 10.4117);
         assert_eq_f64(elements.mean_motion, 2.28537848);
         assert_eq!(elements.revolution_number, 1);
+
+        Ok(())
+    }
+
+    #[test]
+    fn from_tle_rounding_error_prone_epoch() -> core::result::Result<(), Error> {
+        let elements = Elements::from_tle(
+            Some("ISS (ZARYA)".to_string()),
+            "1 25544U 98067A   23001.00031250  .00023190  00000-0  40700-3 0  9996".as_bytes(),
+            "2 25544  51.6422 151.7482 0002260  30.8955 315.0781 15.50422841429866".as_bytes(),
+        )?;
+        assert_eq!(
+            elements.datetime,
+            chrono::NaiveDate::from_ymd_opt(2023, 1, 1)
+                .and_then(|date| date.and_hms_opt(0, 0, 27))
+                .unwrap()
+        );
+
         Ok(())
     }
 
