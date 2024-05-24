@@ -991,6 +991,7 @@ pub fn parse_3les(tles: &str) -> core::result::Result<alloc::vec::Vec<Elements>,
 mod tests {
     use super::*;
 
+    #[cfg(feature = "serde")]
     fn assert_eq_f64(first: f64, second: f64) {
         if second == 0.0 {
             assert_eq!(first, 0.0);
@@ -1022,7 +1023,8 @@ mod tests {
                 "MEAN_MOTION_DOT": 0.00289036,
                 "MEAN_MOTION_DDOT": 0
             }"#,
-        )?;
+        )
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
         match elements.object_name.as_ref() {
             Some(object_name) => assert_eq!(object_name, "ISS (ZARYA)"),
             None => panic!(),
@@ -1042,7 +1044,7 @@ mod tests {
                 chrono::NaiveTime::from_num_seconds_from_midnight_opt(4747, 402656000).unwrap()
             )
         );
-        assert_eq_f64(elements.epoch(), 20.527186712635181);
+        assert_eq_f64(elements.epoch(), 20.527_186_712_635_18);
         assert_eq_f64(
             elements.epoch_afspc_compatibility_mode(),
             20.527186712635135,
@@ -1063,6 +1065,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "alloc")]
     fn test_from_space_track_omm() -> anyhow::Result<()> {
         let elements: Elements = serde_json::from_str(
             r#"{"CCSDS_OMM_VERS":"2.0",
@@ -1106,7 +1109,8 @@ mod tests {
                 "TLE_LINE1":"1 25544U 98067A   20348.69171878  .00000888  00000-0  24124-4 0  9995",
                 "TLE_LINE2":"2 25544  51.6444 180.2777 0001779 128.5985 350.1361 15.49181153259845"
             }"#,
-        )?;
+        )
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
         match elements.object_name.as_ref() {
             Some(object_name) => assert_eq!(object_name, "ISS (ZARYA)"),
             None => panic!(),
@@ -1144,8 +1148,9 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "alloc")]
     fn test_from_celestrak_omms() -> anyhow::Result<()> {
-        let elements_vec: Vec<Elements> = serde_json::from_str(
+        let elements_vec: [Elements; 2] = serde_json::from_str(
             r#"[{
                 "OBJECT_NAME": "ISS (ZARYA)",
                 "OBJECT_ID": "1998-067A",
@@ -1183,18 +1188,21 @@ mod tests {
                 "MEAN_MOTION_DOT": 8.489e-5,
                 "MEAN_MOTION_DDOT": 0
             }]"#,
-        )?;
+        )
+        .map_err(|error| anyhow::anyhow!("{error}"))?;
         assert_eq!(elements_vec.len(), 2);
         Ok(())
     }
 
     #[test]
+    #[cfg(feature = "alloc")]
     fn test_from_tle() -> core::result::Result<(), Error> {
         let elements = Elements::from_tle(
-            Some("ISS (ZARYA)".to_owned()),
+            Some("ISS (ZARYA)".into()),
             "1 25544U 98067A   08264.51782528 -.00002182  00000-0 -11606-4 0  2927".as_bytes(),
             "2 25544  51.6416 247.4627 0006703 130.5360 325.0288 15.72125391563537".as_bytes(),
         )?;
+
         match elements.object_name.as_ref() {
             Some(object_name) => assert_eq!(object_name, "ISS (ZARYA)"),
             None => panic!(),
@@ -1217,7 +1225,7 @@ mod tests {
         assert_eq_f64(elements.epoch(), 8.720103559972621);
         assert_eq_f64(
             elements.epoch_afspc_compatibility_mode(),
-            8.7201035599722125,
+            8.720_103_559_972_213,
         );
         assert_eq_f64(elements.mean_motion_dot, -0.00002182);
         assert_eq_f64(elements.mean_motion_ddot, 0.0);
@@ -1249,7 +1257,7 @@ mod tests {
                 chrono::NaiveTime::from_num_seconds_from_midnight_opt(25600, 136832000).unwrap()
             )
         );
-        assert_eq_f64(elements.epoch(), -19.373589875756331);
+        assert_eq_f64(elements.epoch(), -19.373_589_875_756_33);
         assert_eq_f64(
             elements.epoch_afspc_compatibility_mode(),
             -19.373589875756632,
@@ -1270,6 +1278,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "alloc")]
     fn test_parse_2les() -> core::result::Result<(), Error> {
         let elements_vec = parse_2les(
             "1 25544U 98067A   20194.88612269 -.00002218  00000-0 -31515-4 0  9992\n\
@@ -1282,6 +1291,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "alloc")]
     fn test_parse_3les() -> core::result::Result<(), Error> {
         let elements_vec = parse_3les(
             "ISS (ZARYA)\n\
