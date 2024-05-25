@@ -35,7 +35,7 @@ jobs:
             target_flags: "--lib"
           - feature_set: "no-serde"
             feature_flags: "--no-default-features --features std"
-            target_flags: "--lib --tests --benches --example tle --example tle_afspc"
+            target_flags: "--lib --example tle --example tle_afspc"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
