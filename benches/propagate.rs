@@ -1,10 +1,10 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-#[path = "../test_cases.rs"]
+#[path = "../tests/test_cases.rs"]
 mod test_cases;
 use test_cases::*;
 
 pub fn criterion_benchmark(criterion: &mut Criterion) {
-    let test_cases: TestCases = toml::from_str(include_str!("../test_cases.toml")).unwrap();
+    let test_cases: TestCases = toml::from_str(include_str!("../tests/test_cases.toml")).unwrap();
     criterion.bench_function("propagate all", |b| {
         b.iter(|| {
             let mut predictions = Vec::new();

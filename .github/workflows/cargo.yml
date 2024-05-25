@@ -1,0 +1,43 @@
+name: cargo
+on: [push]
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: rustup component add rustfmt
+      - run: cargo fmt --all --check
+  cargo:
+    strategy:
+      matrix:
+        task: ["clippy", "build", "test"]
+        feature_set: ["default", "no-std", "no-std-alloc", "no-std-alloc-serde", "no-serde"]
+        include:
+          - task: "clippy"
+            extra_flags: "--deny warnings"
+          - task: "build"
+            extra_flags: ""
+          - task: "test"
+            extra_flags: ""
+          - feature_set: "default"
+            feature_flags: ""
+            target_flags: "--all-targets"
+          - feature_set: "no-std"
+            feature_flags: "--no-default-features --features libm"
+            target_flags: "--lib"
+          - feature_set: "no-std-alloc"
+            feature_flags: "--no-default-features --features libm --features alloc"
+            target_flags: "--lib"
+          - feature_set: "no-std-alloc-serde"
+            feature_flags: "--no-default-features --features libm --features alloc --features serde"
+            target_flags: "--lib"
+          - feature_set: "no-serde"
+            feature_flags: "--no-default-features --features std"
+            target_flags: "--lib --tests --benches --example tle --example tle_afspc"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo ${{ matrix.task }} ${{ matrix.feature_flags }} ${{ matrix.target_flags }} -- ${{ matrix.extra_flags }}

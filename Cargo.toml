@@ -19,28 +19,26 @@ categories = [
 ]
 keywords = ["SGP4", "SDP4", "TLE", "OMM"]
 edition = "2021"
+resolver = "2"
 
 [dependencies]
-anyhow = { version = "1.0", default-features = false, optional = true }
-chrono = { version = "0.4.38", default-features = false }
-serde = { version = "1.0", default-features = false, optional = true }
-serde_json = { version = "1.0", default-features = false, optional = true }
-num-traits = { version = "0.2.19", default-features = false, optional = true }
+chrono = {version = "0.4.38", default-features = false}
+serde = {version = "1.0", default-features = false, optional = true}
+serde_json = {version = "1.0", default-features = false, optional = true}
+num-traits = {version = "0.2.19", default-features = false, optional = true}
 
 [dev-dependencies]
+anyhow = {version = "1.0", default-features = false}
 criterion = "0.5.1"
 toml = "0.8.13"
-ureq = { version = "2.9.7", features = ["json"] }
-serde_json = { version = "1.0", default-features = false }
-serde = { version = "1.0", default-features = false }
-anyhow = { version = "1.0", default-features = false }
+ureq = {version = "2.9.7", features = ["json"]}
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["alloc", "serde", "std"]
-alloc = ["anyhow"]
+default = ["alloc", "std", "serde"]
+alloc = []
 serde = [
     "alloc",
     "chrono/serde",
@@ -49,7 +47,7 @@ serde = [
     "serde_json/alloc",
 ]
 std = ["alloc", "anyhow/std", "chrono/std", "serde?/std", "serde_json?/std"]
-libm = ["num-traits/libm"]
+libm = ["dep:num-traits", "num-traits/libm"]
 
 [[bench]]
 name = "propagate"

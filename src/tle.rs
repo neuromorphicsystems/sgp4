@@ -991,11 +991,11 @@ pub fn parse_3les(tles: &str) -> core::result::Result<alloc::vec::Vec<Elements>,
     Ok(elements_vec)
 }
 
+#[cfg(feature = "serde")]
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[cfg(feature = "serde")]
     fn assert_eq_f64(first: f64, second: f64) {
         if second == 0.0 {
             assert_eq!(first, 0.0);
@@ -1004,7 +1004,6 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "serde")]
     #[test]
     fn test_from_celestrak_omm() -> anyhow::Result<()> {
         let elements: Elements = serde_json::from_str(
@@ -1069,7 +1068,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "alloc")]
     fn test_from_space_track_omm() -> anyhow::Result<()> {
         let elements: Elements = serde_json::from_str(
             r#"{"CCSDS_OMM_VERS":"2.0",
@@ -1152,7 +1150,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "alloc")]
     fn test_from_celestrak_omms() -> anyhow::Result<()> {
         let elements_vec: [Elements; 2] = serde_json::from_str(
             r#"[{
@@ -1199,7 +1196,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "alloc")]
     fn test_from_tle() -> core::result::Result<(), Error> {
         let elements = Elements::from_tle(
             Some("ISS (ZARYA)".into()),
@@ -1283,9 +1279,9 @@ mod tests {
     }
 
     #[test]
-    fn from_tle_rounding_error_prone_epoch() -> core::result::Result<(), Error> {
+    fn test_rounding_error_prone_epoch() -> core::result::Result<(), Error> {
         let elements = Elements::from_tle(
-            Some("ISS (ZARYA)".to_string()),
+            None,
             "1 25544U 98067A   23001.00031250  .00023190  00000-0  40700-3 0  9996".as_bytes(),
             "2 25544  51.6422 151.7482 0002260  30.8955 315.0781 15.50422841429866".as_bytes(),
         )?;
@@ -1300,7 +1296,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "alloc")]
     fn test_parse_2les() -> core::result::Result<(), Error> {
         let elements_vec = parse_2les(
             "1 25544U 98067A   20194.88612269 -.00002218  00000-0 -31515-4 0  9992\n\
@@ -1313,7 +1308,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "alloc")]
     fn test_parse_3les() -> core::result::Result<(), Error> {
         let elements_vec = parse_3les(
             "ISS (ZARYA)\n\

@@ -1,10 +1,10 @@
-#[path = "../test_cases.rs"]
+#[path = "test_cases.rs"]
 mod test_cases;
 use test_cases::*;
 
 #[test]
 fn propagate() -> anyhow::Result<()> {
-    let test_cases: TestCases = toml::from_str(include_str!("../test_cases.toml")).unwrap();
+    let test_cases: TestCases = toml::from_str(include_str!("test_cases.toml")).unwrap();
     for test_case in test_cases.list.iter() {
         #[cfg(feature = "alloc")]
         let element =
