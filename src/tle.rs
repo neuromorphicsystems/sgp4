@@ -175,7 +175,7 @@ impl DecimalPointAssumedRepresentation for [u8] {
                 end,
             });
         }
-        let mut raw_buffer = [0_u8; 16];
+        let mut raw_buffer = [0u8; 16];
         let length;
         if trimmed[0] == b'-' {
             if trimmed.len() < 2 || trimmed.len() + 1 > raw_buffer.len() {

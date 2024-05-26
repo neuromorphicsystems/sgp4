@@ -65,7 +65,9 @@ To run the Space-Track example, you must first assign your Space-Track.org crede
 
 This crate supports `no_std` environments. TLE parsing and SGP4 propagation do not require `alloc` either. We use [num-traits](https://docs.rs/num-traits/latest/num_traits/) with [libm](https://docs.rs/libm/latest/libm/) for floating point functions when `std` is not available.
 
-All serde-related features, in particular OMM parsing, require `alloc`.
+See https://github.com/neuromorphicsystems/sgp4-no-std for a minimal no-std example that runs on Docker Linux x86_64.
+
+All serde-related features, such as OMM parsing, require `alloc`.
 
 ## Benchmark
 
