@@ -698,13 +698,7 @@ impl Constants {
             }
 
             // (E + ω)ᵢ₊₁ = (E + ω)ᵢ + Δ(E + ω)ᵢ|[-0.95, 0.95]
-            ew += if delta < -0.95 {
-                -0.95
-            } else if delta > 0.95 {
-                0.95
-            } else {
-                delta
-            };
+            ew += delta.clamp(-0.95, 0.95);
         }
 
         // p₃₉ = aₓₙ² + aᵧₙ²
