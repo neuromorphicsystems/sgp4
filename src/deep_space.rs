@@ -105,8 +105,7 @@ impl ResonanceState {
         }
         // θ = θ₀ + 4.37526908801129966 × 10⁻³ t rem 2π
         #[allow(clippy::excessive_precision)]
-        let sidereal_time =
-            (sidereal_time_0 + t * 4.37526908801129966e-3) % (2.0 * core::f64::consts::PI);
+        let sidereal_time = (sidereal_time_0 + t * 4.37526908801129966e-3) % core::f64::consts::TAU;
         let (delta_t, ordering) = if t > 0.0 {
             (DELTA_T, Ordering::Less)
         } else {
@@ -268,14 +267,13 @@ pub(crate) fn constants(
         SOLAR_PERTURBATION_COEFFICIENT,
         SOLAR_MEAN_MOTION,
         // Mₛ₀ = (6.2565837 + 0.017201977 d₁₉₀₀) rem 2π
-        (6.2565837 + 0.017201977 * d1900) % (2.0 * core::f64::consts::PI),
+        (6.2565837 + 0.017201977 * d1900) % core::f64::consts::TAU,
         p2,
         b0,
     );
 
     // Ωₗₑ = 4.523602 - 9.2422029 × 10⁻⁴ d₁₉₀₀ rem 2π
-    let lunar_right_ascension_epsilon =
-        (4.5236020 - 9.2422029e-4 * d1900) % (2.0 * core::f64::consts::PI);
+    let lunar_right_ascension_epsilon = (4.5236020 - 9.2422029e-4 * d1900) % core::f64::consts::TAU;
 
     // cos Iₗ = 0.91375164 - 0.03568096 Ωₗₑ
     let lunar_inclination_cosine = 0.91375164 - 0.03568096 * lunar_right_ascension_epsilon.cos();
@@ -320,7 +318,7 @@ pub(crate) fn constants(
         LUNAR_PERTURBATION_COEFFICIENT,
         LUNAR_MEAN_MOTION,
         // Mₗ₀ = (-1.1151842 + 0.228027132 d₁₉₀₀) rem 2π
-        (-1.1151842 + 0.228027132 * d1900) % (2.0 * core::f64::consts::PI),
+        (-1.1151842 + 0.228027132 * d1900) % core::f64::consts::TAU,
         p2,
         b0,
     );
@@ -358,7 +356,7 @@ pub(crate) fn constants(
                             + orbit_0.right_ascension
                             + orbit_0.argument_of_perigee
                             - sidereal_time_0)
-                            % (2.0 * core::f64::consts::PI),
+                            % core::f64::consts::TAU,
 
                         // λ̇₀ = p₁₅ + (k₁₄ + p₁₄) − θ̇ + (Ṁₛ + Ṁₗ) + (ω̇ₛ + ω̇ₗ) + (Ω̇ₛ + Ω̇ₗ) - n₀"
                         lambda_dot_0: p15 + (k14 + p14) - SIDEREAL_SPEED
@@ -413,7 +411,7 @@ pub(crate) fn constants(
                             + orbit_0.right_ascension
                             - sidereal_time_0
                             - sidereal_time_0)
-                            % (2.0 * core::f64::consts::PI),
+                            % core::f64::consts::TAU,
 
                         // λ̇₀ = p₁₅ + (Ṁₛ + Ṁₗ) + 2 (p₁₄ + (Ω̇ₛ + Ω̇ₗ) - θ̇) - n₀"
                         lambda_dot_0: p15
@@ -726,14 +724,13 @@ impl propagator::Constants {
             // Ω = │ p₃₀ + 2π if p₃₀ + π < p₂₂ rem 2π
             //     │ p₃₀ - 2π if p₃₀ - π > p₂₂ rem 2π
             //     │ p₃₀      otherwise
-            let right_ascension =
-                if p30 < p22 % (2.0 * core::f64::consts::PI) - core::f64::consts::PI {
-                    p30 + (2.0 * core::f64::consts::PI)
-                } else if p30 > p22 % (2.0 * core::f64::consts::PI) + core::f64::consts::PI {
-                    p30 - (2.0 * core::f64::consts::PI)
-                } else {
-                    p30
-                };
+            let right_ascension = if p30 < p22 % core::f64::consts::TAU - core::f64::consts::PI {
+                p30 + core::f64::consts::TAU
+            } else if p30 > p22 % core::f64::consts::TAU + core::f64::consts::PI {
+                p30 - core::f64::consts::TAU
+            } else {
+                p30
+            };
             (
                 right_ascension,
                 // ω = │ p₂₃ + (pₛ₄ + pₗ₄) + cos I ((p₂₂ rem 2π) - Ω)
@@ -741,19 +738,19 @@ impl propagator::Constants {
                 // ω = │ p₂₃ + (pₛ₄ + pₗ₄) + cos I ((p₂₂ rem 2π) - Ω)
                 //     │ - (δIₛ + δIₗ) (p₂₂ rem 2π) sin I             otherwise
                 p23 + (ps4 + pl4)
-                    + inclination.cos() * (p22 % (2.0 * core::f64::consts::PI) - right_ascension)
+                    + inclination.cos() * (p22 % core::f64::consts::TAU - right_ascension)
                     - (solar_delta_inclination + lunar_delta_inclination)
                         * if afspc_compatibility_mode {
                             #[cfg(feature = "std")]
                             {
-                                p22.rem_euclid(2.0 * core::f64::consts::PI)
+                                p22.rem_euclid(core::f64::consts::TAU)
                             }
                             #[cfg(not(feature = "std"))]
                             {
-                                Euclid::rem_euclid(&p22, &(2.0 * core::f64::consts::PI))
+                                Euclid::rem_euclid(&p22, &core::f64::consts::TAU)
                             }
                         } else {
-                            p22 % (2.0 * core::f64::consts::PI)
+                            p22 % core::f64::consts::TAU
                         }
                         * inclination.sin(),
             )

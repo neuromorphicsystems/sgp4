@@ -73,11 +73,11 @@ pub fn iau_epoch_to_sidereal_time(epoch: f64) -> f64 {
 
     #[cfg(feature = "std")]
     {
-        theta.rem_euclid(2.0 * core::f64::consts::PI)
+        theta.rem_euclid(core::f64::consts::TAU)
     }
     #[cfg(not(feature = "std"))]
     {
-        Euclid::rem_euclid(&theta, &(2.0 * core::f64::consts::PI))
+        Euclid::rem_euclid(&theta, &core::f64::consts::TAU)
     }
 }
 
@@ -98,16 +98,15 @@ pub fn afspc_epoch_to_sidereal_time(epoch: f64) -> f64 {
     #[allow(clippy::excessive_precision)]
     let theta = 1.7321343856509374
         + 1.72027916940703639e-2 * (d1970 + 1.0e-8).floor()
-        + (1.72027916940703639e-2 + 2.0 * core::f64::consts::PI)
-            * (d1970 - (d1970 + 1.0e-8).floor())
+        + (1.72027916940703639e-2 + core::f64::consts::TAU) * (d1970 - (d1970 + 1.0e-8).floor())
         + d1970.powi(2) * 5.07551419432269442e-15;
 
     #[cfg(feature = "std")]
     {
-        theta.rem_euclid(2.0 * core::f64::consts::PI)
+        theta.rem_euclid(core::f64::consts::TAU)
     }
     #[cfg(not(feature = "std"))]
     {
-        Euclid::rem_euclid(&theta, &(2.0 * core::f64::consts::PI))
+        Euclid::rem_euclid(&theta, &core::f64::consts::TAU)
     }
 }

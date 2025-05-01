@@ -418,7 +418,7 @@ impl Constants {
             // k₁ = ³/₂ C₁
             let k1 = 1.5 * c1;
 
-            if orbit_0.mean_motion > 2.0 * core::f64::consts::PI / 225.0 {
+            if orbit_0.mean_motion > core::f64::consts::TAU / 225.0 {
                 Ok(near_earth::constants(
                     geopotential,
                     drag_term,
@@ -682,7 +682,7 @@ impl Constants {
 
         // p₃₈ = M + ω + p₃₇ p₃₅ aₓₙ rem 2π
         let p38 = (orbit.mean_anomaly + orbit.argument_of_perigee + p37 * p35 * axn)
-            % (2.0 * core::f64::consts::PI);
+            % core::f64::consts::TAU;
 
         // (E + ω)₀ = p₃₈
         let mut ew = p38;
