@@ -1,9 +1,9 @@
 fn main() -> anyhow::Result<()> {
-    let response = ureq::get("https://celestrak.com/NORAD/elements/gp.php")
+    let mut response = ureq::get("https://celestrak.com/NORAD/elements/gp.php")
         .query("GROUP", "galileo")
         .query("FORMAT", "json")
         .call()?;
-    let elements_vec: Vec<sgp4::Elements> = response.into_json()?;
+    let elements_vec: Vec<sgp4::Elements> = response.body_mut().read_json()?;
     for elements in &elements_vec {
         println!("{}", elements.object_name.as_ref().unwrap());
         let constants = sgp4::Constants::from_elements(elements)?;
