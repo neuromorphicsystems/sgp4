@@ -5,7 +5,7 @@ use num_traits::Float;
 use num_traits::Euclid;
 
 /// Model of the Earth radius and gravitational field
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Geopotential {
     /// Equatorial radius of the earth in km

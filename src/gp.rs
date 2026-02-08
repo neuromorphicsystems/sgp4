@@ -1,5 +1,5 @@
 /// Represents a propagation error caused by orbital elements divergence
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Error {
     OutOfRangeEccentricity {
         /// Eccentricity value (unitless)

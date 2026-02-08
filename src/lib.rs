@@ -86,7 +86,7 @@ pub use tle::parse_2les;
 pub use tle::parse_3les;
 
 /// Represents a propagation error caused by orbital elements divergence
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum KozaiElementsError {
     NegativeKozaiMeanMotion,
     NegativeBrouwerMeanMotion,
@@ -107,7 +107,7 @@ impl core::fmt::Display for KozaiElementsError {
 impl std::error::Error for KozaiElementsError {}
 
 /// The orbit used to generate epoch constants has an invalid eccentricity
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct OutOfRangeEpochEccentricity(pub f64);
 
 impl core::fmt::Display for OutOfRangeEpochEccentricity {
@@ -123,7 +123,7 @@ impl core::fmt::Display for OutOfRangeEpochEccentricity {
 impl std::error::Error for OutOfRangeEpochEccentricity {}
 
 /// Errors returned when creating epoch contants from elements
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ElementsError {
     KozaiElementsError(KozaiElementsError),
     OutOfRangeEpochEccentricity(OutOfRangeEpochEccentricity),
