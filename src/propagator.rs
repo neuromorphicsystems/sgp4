@@ -4,7 +4,7 @@ use crate::third_body;
 /// Predicted satellite position and velocity after SGP4 propagation
 ///
 /// The position and velocity are given in the True Equator, Mean Equinox (TEME) of epoch reference frame.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Prediction {
     /// The three position components (x, y, z) in km
@@ -15,7 +15,7 @@ pub struct Prediction {
 }
 
 /// The Brouwer orbital elements
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Orbit {
     /// Angle between the equator and the orbit plane in rad
@@ -37,14 +37,14 @@ pub struct Orbit {
     pub mean_motion: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) enum Elliptic {
     No {},
     Yes { k11: f64, k12: f64, k13: f64 },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) enum HighAltitude {
     No {},
@@ -62,7 +62,7 @@ pub(crate) enum HighAltitude {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) enum Resonance {
     OneDay {
@@ -85,7 +85,7 @@ pub(crate) enum Resonance {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) enum Resonant {
     No {
@@ -99,7 +99,7 @@ pub(crate) enum Resonant {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub(crate) enum Method {
     NearEarth {
@@ -126,7 +126,7 @@ pub(crate) enum Method {
 /// They are not mutated during propagation, which means they can
 /// be used by different threads in parallel
 /// (for example to generate predictions at different times).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Constants {
     pub(crate) geopotential: model::Geopotential,

@@ -62,7 +62,7 @@ const G54: f64 = 4.4108898;
 /// Represents the state of the deep space resonnance integrator
 ///
 /// Use [Constants::initial_state](struct.Constants.html#method.initial_state) to initialize a resonance state.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub struct ResonanceState {
     t: f64,
     mean_motion: f64,

@@ -13,7 +13,7 @@ use num_traits::Float;
 use serde::de::Deserialize;
 
 /// TLE error type
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ErrorWhat {
     BadChecksum,
     BadLength,
@@ -31,7 +31,7 @@ pub enum ErrorWhat {
 }
 
 /// Input line where a parse error was found
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ErrorLine {
     Line1,
     Line2,
@@ -39,7 +39,7 @@ pub enum ErrorLine {
 }
 
 /// Represents a TLE parse error
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Error {
     /// TLE error type
     what: ErrorWhat,
@@ -225,7 +225,7 @@ impl DecimalPointAssumedRepresentation for [u8] {
 }
 
 /// A satellite's elements classification
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Classification {
     /// Declassfied objects or objects without a classification
@@ -280,7 +280,7 @@ pub enum Classification {
 /// )?;
 /// #     Ok(())
 /// # }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Elements {
     /// The name associated with the satellite
@@ -493,14 +493,14 @@ pub fn julian_years_since_j2000_afspc_compatibility_mode(datetime: &chrono::Naiv
 /// Minutes ellapsed since the elements' epoch
 ///
 /// This number can be negative since SGP4 can propagate back in time.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MinutesSinceEpoch(pub f64);
 
 /// Nanoseconds overflow while converting from datetime to minutes since epoch
 ///
 /// 2⁶⁴ nanoseconds correspond to about 585 years.
 /// Overflows are almost certainly caused by data corruption or code bugs.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct DatetimeToMinutesSinceEpochError {
     from: chrono::NaiveDateTime,
     to: chrono::NaiveDateTime,
@@ -522,7 +522,7 @@ impl std::error::Error for DatetimeToMinutesSinceEpochError {}
 ///
 /// 2⁶⁴ nanoseconds correspond to about 585 years.
 /// Overflows are almost certainly caused by data corruption or code bugs.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum MinutesSinceEpochToDatetimeError {
     MinutesToNanoseconds(f64),
     Add {
