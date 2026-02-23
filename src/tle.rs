@@ -21,6 +21,7 @@ pub enum ErrorWhat {
     ExpectedFloat,
     ExpectedFloatWithAssumedDecimalPoint,
     ExpectedInteger,
+    ExpectedAlpha5,
     ExpectedSpace,
     ExpectedString,
     FloatWithAssumedDecimalPointTooLong,
@@ -64,6 +65,7 @@ impl core::fmt::Display for Error {
                 ErrorWhat::ExpectedFloat => "Parsing a float field failed",
                 ErrorWhat::ExpectedFloatWithAssumedDecimalPoint => "Parsing a float field failed (special TLE float representation with assumed decimal point)",
                 ErrorWhat::ExpectedInteger => "Parsing an integer field failed",
+                ErrorWhat::ExpectedAlpha5 => "Parsing an Alpha-5 field failed",
                 ErrorWhat::ExpectedSpace => "Found a non-space character between fields",
                 ErrorWhat::ExpectedString => "Parsing a string field failed",
                 ErrorWhat::FloatWithAssumedDecimalPointTooLong => "Tried to parse a float (special TLE float representation with assumed decimal point) with more than 16 ASCII characters",
@@ -490,6 +492,25 @@ pub fn julian_years_since_j2000_afspc_compatibility_mode(datetime: &chrono::Naiv
         / 365.25
 }
 
+/// Parses a NORAD catalog ID in Legacy TLE or Alpha-5 format
+pub fn parse_norad_id(raw_norad_id: &[u8]) -> Option<u64> {
+    if raw_norad_id.len() == 5 {
+        let init = match raw_norad_id[0] {
+            b'0' | b'1' | b'2' | b'3' | b'4' | b'5' | b'6' | b'7' | b'8' | b'9' => {
+                (raw_norad_id[0] - b'0') as u64
+            }
+            b'A'..=b'H' => (raw_norad_id[0] - b'A' + 10) as u64,
+            b'J'..=b'N' => (raw_norad_id[0] - b'J' + 18) as u64,
+            b'P'..=b'Z' => (raw_norad_id[0] - b'P' + 23) as u64,
+            _ => return None,
+        };
+        let rest = raw_norad_id[1..].parse::<u64>().ok()?;
+        Some(init * 10000 + rest)
+    } else {
+        raw_norad_id.parse::<u64>().ok()
+    }
+}
+
 /// Minutes ellapsed since the elements' epoch
 ///
 /// This number can be negative since SGP4 can propagate back in time.
@@ -602,25 +623,19 @@ impl Elements {
                 });
             }
         }
-        let norad_id = line1[2..7]
-            .trim_ascii_start_polyfill()
-            .parse::<u64>()
-            .map_err(|_| Error {
-                what: ErrorWhat::ExpectedInteger,
-                line: ErrorLine::Line1,
+        let norad_id = parse_norad_id(line1[2..7].trim_ascii_start_polyfill()).ok_or(Error {
+            what: ErrorWhat::ExpectedAlpha5,
+            line: ErrorLine::Line1,
+            start: 2,
+            end: 7,
+        })?;
+        if norad_id
+            != parse_norad_id(line2[2..7].trim_ascii_start_polyfill()).ok_or(Error {
+                what: ErrorWhat::ExpectedAlpha5,
+                line: ErrorLine::Line2,
                 start: 2,
                 end: 7,
-            })?;
-        if norad_id
-            != line2[2..7]
-                .trim_ascii_start_polyfill()
-                .parse::<u64>()
-                .map_err(|_| Error {
-                    what: ErrorWhat::ExpectedInteger,
-                    line: ErrorLine::Line2,
-                    start: 2,
-                    end: 7,
-                })?
+            })?
         {
             return Err(Error {
                 what: ErrorWhat::NoradIdMismatch,
@@ -1320,6 +1335,40 @@ mod tests {
              2 42982  51.6338 155.6245 0002758 166.8841 193.2228 15.70564504154944\n",
         )?;
         assert_eq!(elements_vec.len(), 2);
+        Ok(())
+    }
+
+    #[test]
+    fn test_parse_catid() -> core::result::Result<(), Error> {
+        assert_eq!(parse_norad_id(b"123"), Some(123));
+        assert_eq!(parse_norad_id(b"12345"), Some(12345));
+        assert_eq!(parse_norad_id(b"A2345"), Some(102345));
+        assert_eq!(parse_norad_id(b"T2345"), Some(272345));
+        assert_eq!(parse_norad_id(b"1A345"), None);
+        assert_eq!(parse_norad_id(b"A"), None);
+        Ok(())
+    }
+
+    #[test]
+    fn test_from_tle_alpha5() -> core::result::Result<(), Error> {
+        let elements = Elements::from_tle(
+            None,
+            "1  5544U 98067A   08264.51782528 -.00002182  00000-0 -11606-4 0  2925".as_bytes(),
+            "2  5544  51.6416 247.4627 0006703 130.5360 325.0288 15.72125391563535".as_bytes(),
+        )?;
+        assert_eq!(elements.norad_id, 5544);
+        let elements = Elements::from_tle(
+            None,
+            "1 A5544U 98067A   08264.51782528 -.00002182  00000-0 -11606-4 0  2925".as_bytes(),
+            "2 A5544  51.6416 247.4627 0006703 130.5360 325.0288 15.72125391563535".as_bytes(),
+        )?;
+        assert_eq!(elements.norad_id, 105544);
+        let elements = Elements::from_tle(
+            None,
+            "1  A554U 98067A   08264.51782528 -.00002182  00000-0 -11606-4 0  2921".as_bytes(),
+            "2  A554  51.6416 247.4627 0006703 130.5360 325.0288 15.72125391563531".as_bytes(),
+        );
+        assert!(elements.is_err());
         Ok(())
     }
 }
