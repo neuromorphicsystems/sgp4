@@ -507,7 +507,8 @@ impl Constants {
     /// Initializes a new propagator from an `Elements` object
     ///
     /// This method should be used if compatibility with the AFSPC implementation is needed.
-    /// The WGS72 model, the AFSPC sidereal time expression and the AFSPC UTC to J2000 expression are used.
+    /// The WGS72 model, the IAU sidereal time expression (matching Vallado's gstime_SGP4)
+    /// and the AFSPC UTC to J2000 expression are used.
     ///
     /// # Arguments
     ///
@@ -530,9 +531,14 @@ impl Constants {
     pub fn from_elements_afspc_compatibility_mode(
         elements: &Elements,
     ) -> core::result::Result<Self, ElementsError> {
+        // Vallado's initl() computes gsto with the AFSPC d₁₉₇₀ formula (gsto1)
+        // but unconditionally overwrites it with gstime_SGP4 on SGP4.cpp line 1273:
+        //     gsto = gstime_SGP4(epoch + 2433281.5);
+        // The AFSPC sidereal time is dead code in the reference implementation.
+        // Use the IAU/gstime polynomial to match the C++ output.
         Ok(Constants::new(
             WGS72,
-            afspc_epoch_to_sidereal_time,
+            iau_epoch_to_sidereal_time,
             elements.epoch_afspc_compatibility_mode(),
             elements.drag_term,
             Orbit::from_kozai_elements(
