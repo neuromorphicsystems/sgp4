@@ -782,15 +782,17 @@ impl Elements {
                     start: 59,
                     end: 61,
                 })? as i32),
-            ephemeris_type: line1[62..63]
-                .trim_ascii_start_polyfill()
-                .parse()
-                .map_err(|_| Error {
+            // A blank ephemeris type reads as 0, as in Vallado's twoline2rv
+            ephemeris_type: if line1[62] == b' ' {
+                0
+            } else {
+                line1[62..63].parse().map_err(|_| Error {
                     what: ErrorWhat::ExpectedInteger,
                     line: ErrorLine::Line1,
                     start: 62,
                     end: 63,
-                })?,
+                })?
+            },
             element_set_number: line1[64..68].trim_ascii_start_polyfill().parse().map_err(
                 |_| Error {
                     what: ErrorWhat::ExpectedInteger,
@@ -1258,7 +1260,7 @@ mod tests {
         assert_eq!(elements.revolution_number, 56353);
         let elements = Elements::from_tle(
             None,
-            "1 11801U          80230.29629788  .01431103  00000-0  14311-1 0    13".as_bytes(),
+            "1 11801U          80230.29629788  .01431103  00000-0  14311-1      13".as_bytes(),
             "2 11801  46.7916 230.4354 7318036  47.4722  10.4117  2.28537848    13".as_bytes(),
         )?;
         assert!(elements.object_name.is_none());
